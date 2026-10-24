@@ -52,6 +52,19 @@
     "check": "ultracite check",
     "prepare": "lefthook install"
   },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "@crustjs/core": "^0.5.6",
+    "@crustjs/extensions": "^0.5.6",
+    "acorn": "^8.18.0",
+    "c12": "4.0.0-rc.2",
+    "env-paths": "^4.0.0",
+    "execa": "^10.0.1",
+    "get-port": "^7.2.0",
+    "proper-lockfile": "^4.1.2",
+    "terminal-link": "^5.0.0",
+    "zod": "^4.6.5"
+  },
   "devDependencies": {
     "@types/node": "^26.6.3",
     "@types/proper-lockfile": "^4.1.4",
