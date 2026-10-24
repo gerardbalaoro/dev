@@ -24,6 +24,7 @@
   },
   "files": [
     "dist",
+    ".crust/root/skills",
     "README.md"
   ],
   "type": "module",
@@ -56,6 +57,7 @@
     "@clack/prompts": "^1.8.1",
     "@crustjs/core": "^0.5.6",
     "@crustjs/extensions": "^0.5.6",
+    "@crustjs/skills": "^0.5.6",
     "acorn": "^8.18.0",
     "c12": "4.0.0-rc.2",
     "env-paths": "^4.0.0",

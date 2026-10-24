@@ -1,3 +1,4 @@
+import { lstat, realpath, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 
 import { createGitRepo, createTempDir, writeConfig } from "@tests/helpers";
@@ -21,13 +22,49 @@ async function invoke(args: string[], cwd: string) {
 }
 
 describe("cli", () => {
+  it.skipIf(Cli.endsWith(".ts"))(
+    "installs, repairs, and removes packaged skills in a project without a session",
+    async () => {
+      const root = await createTempDir();
+      const link = path.join(root, ".agents/skills/dev");
+      const installed = await invoke(
+        ["skills", "install", "--all", "--scope", "project"],
+        root
+      );
+      await expect(realpath(link)).resolves.toBe(
+        path.resolve(path.dirname(Cli), "../.crust/root/skills/dev")
+      );
+
+      await unlink(link);
+      await symlink(path.join(root, "previous/skills/dev"), link, "dir");
+      const repaired = await invoke(
+        ["skills", "repair", "--scope", "project"],
+        root
+      );
+      await expect(realpath(link)).resolves.toBe(
+        path.resolve(path.dirname(Cli), "../.crust/root/skills/dev")
+      );
+
+      const removed = await invoke(
+        ["skills", "uninstall", "--all", "--scope", "project"],
+        root
+      );
+      expect({
+        installed: installed.exitCode,
+        removed: removed.exitCode,
+        repaired: repaired.exitCode,
+      }).toStrictEqual({ installed: 0, removed: 0, repaired: 0 });
+      await expect(lstat(link)).rejects.toMatchObject({ code: "ENOENT" });
+    }
+  );
+
   it.each([{ args: [] }, { args: ["--help"] }, { args: ["-h"] }])(
     "shows available commands outside a Git workspace for $args",
     async ({ args }) => {
       const result = await invoke(args, await createTempDir());
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("dev <command>");
-      for (const command of ["start", "stop", "status", "exec"]) {
+      for (const command of ["start", "stop", "status", "exec", "skills"]) {
         expect(result.stdout).toContain(command);
       }
       expect(result.stdout).toContain("https://github.com/gerardbalaoro/dev");
@@ -45,7 +82,7 @@ describe("cli", () => {
     }
   );
 
-  it.each(["start", "stop", "status"])(
+  it.each(["start", "stop", "status", "skills"])(
     "shows %s help without running the command",
     async (command) => {
       const result = await invoke([command, "--help"], await createTempDir());

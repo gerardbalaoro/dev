@@ -1,5 +1,6 @@
 import { Crust } from "@crustjs/core";
 import { help, version } from "@crustjs/extensions";
+import { skill } from "@crustjs/skills";
 
 import Metadata from "#package" with { type: "json" };
 import Exec from "@/commands/exec";
@@ -18,5 +19,5 @@ export const App = new Crust("dev", {
   ],
   version: Metadata.version,
 })
-  .extend(version(), help())
+  .extend(version(), help(), skill({}))
   .add(Start, Stop, Status, Exec);
