@@ -1,0 +1,71 @@
+{
+  "name": "@gblab/dev",
+  "version": "0.1.0",
+  "description": "Local development with separate ports and URLs for each Git worktree.",
+  "keywords": [
+    "cli",
+    "development",
+    "environment",
+    "git-worktree",
+    "localhost",
+    "proxy"
+  ],
+  "homepage": "https://github.com/gerardbalaoro/dev#readme",
+  "bugs": {
+    "url": "https://github.com/gerardbalaoro/dev/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gerardbalaoro/dev.git"
+  },
+  "bin": {
+    "dev": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "imports": {
+    "#package": "./package.json"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsdown",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "ultracite check",
+    "fix": "ultracite fix",
+    "format": "oxfmt --write .",
+    "prepack": "pnpm build",
+    "check": "ultracite check",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/proper-lockfile": "^4.1.4",
+    "lefthook": "^2.1.14",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "tsdown": "^0.23.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "ultracite": "^7.12.0",
+    "vitest": "^5.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.6.0"
+}

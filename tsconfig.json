@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
+    },
+    "lib": [
+      "ES2023",
+      "ES2024.Promise",
+      "ESNext.Array",
+      "DOM",
+      "DOM.Iterable",
+      "ScriptHost"
+    ]
+  },
+  "include": ["src", "tests", "*.config.ts"]
+}
