@@ -1,7 +1,9 @@
 # Agent Instructions
 
-Discover the resources below when your work is relevant to it.
+## Documentation Scope
 
-- [Git Conventions](.agents/rules/git-conventions.md)
-- [TypeScript Rules](.agents/rules/typescript-rules.md)
-- [Writing Tests](.agents/rules/writing-tests.md)
+- Keep the README product-focused and written for users. Do not assume they build from source.
+- Keep `AGENTS.md` focused on lasting decisions and constraints, not descriptions of the current
+  implementation.
+- Keep detailed conventions in the linked skills; add project-specific rules here only when those
+  skills do not cover them.

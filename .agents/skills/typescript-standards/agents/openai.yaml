@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript Standards"
+  short_description: "Apply TypeScript coding standards"
+  default_prompt: "Use $typescript-standards to write or review this TypeScript code."
