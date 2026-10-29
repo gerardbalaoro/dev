@@ -4,6 +4,7 @@ import path from "node:path";
 import { createGitRepo, createTempDir, writeConfig } from "@tests/helpers";
 import { execa } from "execa";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { Identity } from "@/process/identity";
 import { Store } from "@/session/store";
@@ -31,7 +32,7 @@ async function fixture(body: string, config = {}) {
   const script = path.join(root, "script.mjs");
   await writeFile(
     script,
-    `import { dev, Dev, port, env, docker } from ${JSON.stringify(Entry)};\n${body}`
+    `import { dev, Dev, port, env, docker, Sessions, Workspaces } from ${JSON.stringify(Entry)};\n${body}`
   );
   const env = {
     DEV_STATE_DIR: state,
@@ -427,7 +428,7 @@ const task = session.exec([process.execPath, "-e", "setInterval(() => {}, 1000)"
 await session.exec([process.execPath, "-p", "'synchronized'"]);
 await session.stop();
 const result = await task;
-try { await session.exec([process.execPath, "-e", "process.exit(0)"]); }
+try { await session.exec([process.execPath, "-e", 'require("node:fs").writeFileSync("unexpected", "spawned")']); }
 catch(error) { console.log(JSON.stringify({ code: result.code, error: error.message })); }
 `);
     const output = await f.execute();
@@ -435,6 +436,38 @@ catch(error) { console.log(JSON.stringify({ code: result.code, error: error.mess
       code: 143,
       error: "The session has stopped",
     });
+    await expect(readFile(path.join(f.root, "unexpected"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  }, 25_000);
+
+  it("keeps concurrent command records when another command completes", async () => {
+    const f = await fixture(`
+const { existsSync } = await import("node:fs");
+const { setTimeout: delay } = await import("node:timers/promises");
+const session = await dev.start();
+const tasks = ["first", "second"].map(name => session.exec([
+  process.execPath, "-e",
+  'require("node:fs").writeFileSync(process.argv[1], "ready"); setInterval(() => {}, 1000)', name,
+]));
+const completed = Promise.all(tasks);
+try {
+  while (!existsSync("first") || !existsSync("second")) await delay(10);
+  await session.exec([process.execPath, "-e", ""]);
+  const state = await Sessions.get(await Workspaces.git());
+  const tracked = state.commands.map(command => command.pid);
+  await session.stop();
+  console.log(JSON.stringify({ tracked, results: (await completed).map(result => result.code) }));
+} finally { await session.stop(); }
+`);
+    const output = await f.execute();
+    const result = z
+      .object({ results: z.array(z.number()), tracked: z.array(z.number()) })
+      .parse(JSON.parse(output.stdout));
+    expect(result.tracked).toHaveLength(2);
+    expect(new Set(result.tracked).size).toBe(2);
+    expect(result.results).toStrictEqual([143, 143]);
+    await expect(new Store(await Workspaces.git(f.root), f.state).read()).resolves.toBeUndefined();
   }, 25_000);
 
   it("cleans up when the embedding process exits without calling stop", async () => {

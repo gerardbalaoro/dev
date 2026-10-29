@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { run } from "@/process/run";
-import type { RunOptions } from "@/process/run";
+import type { ExecutionOptions, Executor } from "@/process/run";
 
 const ContainerSchema = z.object({
   Publishers: z
@@ -18,10 +18,11 @@ const ContainerSchema = z.object({
 export async function published(
   service: string,
   containerPort: number,
-  options: RunOptions
+  options: ExecutionOptions,
+  execute: Executor = run
 ): Promise<string> {
   const timeout = AbortSignal.timeout(15_000);
-  const result = await run(
+  const result = await execute(
     ["docker", "compose", "ps", "--format", "json", "--status", "running", service],
     {
       ...options,

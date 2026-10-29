@@ -11,6 +11,7 @@ import type { RunOptions } from "@/process/run";
 import { restore } from "@/proxy/detect";
 import { Routes } from "@/proxy/routes";
 import type { Provider } from "@/proxy/types";
+import { Execution } from "@/session/execution";
 import { SessionSchema } from "@/session/schema";
 import type { Store } from "@/session/store";
 import type { Session } from "@/session/types";
@@ -237,16 +238,17 @@ export class Journal {
     const { shutdown } = this.state;
     if (shutdown && !this.state.process) {
       await attempt(async () => {
+        // Shutdown must still run after live session execution has stopped.
+        const execution = new Execution(this, AbortSignal.timeout(30_000));
         const code = await foreground(
           shutdown,
           {
             cwd: this.state.root,
             env: { ...inherit(), ...this.state.env },
-            signal: AbortSignal.timeout(30_000),
-            ...this.observe(),
           },
           ui,
-          true
+          true,
+          execution.run
         );
         if (code) {
           throw new Error(`Shutdown hook exited ${code}`);

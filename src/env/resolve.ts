@@ -7,7 +7,7 @@ import { read } from "@/env/resolvers/env";
 import { allocator } from "@/env/resolvers/port";
 import type { Allocator } from "@/env/resolvers/port";
 import { NameSchema, ServiceSchema, PortSchema } from "@/env/schema";
-import type { RunOptions } from "@/process/run";
+import type { Executor } from "@/process/run";
 
 const ComposePortSchema = z.tuple([ServiceSchema, PortSchema]);
 const CommandSchema = z.tuple([z.string().refine((script) => script.trim().length > 0)]);
@@ -23,7 +23,7 @@ export function inherit(): Record<string, string> {
 interface ResolverOptions {
   allocator?: Allocator;
   signal?: AbortSignal;
-  observer?: Pick<RunOptions, "onSpawn" | "onSettled">;
+  execute?: Executor;
 }
 
 export class Resolver {
@@ -53,12 +53,12 @@ export class Resolver {
     return await interpolate(expression, {
       "docker.compose.port": (...args) => {
         const [service, port] = ComposePortSchema.parse(args);
-        return published(service, port, {
-          cwd: this.cwd,
-          env: this.env,
-          signal: this.options.signal,
-          ...this.options.observer,
-        });
+        return published(
+          service,
+          port,
+          { cwd: this.cwd, env: this.env, signal: this.options.signal },
+          this.options.execute
+        );
       },
       env: (...args) => {
         const [name] = EnvSchema.parse(args);
@@ -66,7 +66,11 @@ export class Resolver {
       },
       exec: (...args) => {
         const [script] = CommandSchema.parse(args);
-        return command(script, this.env, this.cwd, this.options.signal, this.options.observer);
+        return command(
+          script,
+          { cwd: this.cwd, env: this.env, signal: this.options.signal },
+          this.options.execute
+        );
       },
       port: async (...args) => {
         FreePortSchema.parse(args);

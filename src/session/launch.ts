@@ -5,9 +5,9 @@ import { Endpoints } from "@/endpoints/resolve";
 import type { Endpoints as ResolvedEndpoints } from "@/endpoints/types";
 import { inherit, Resolver } from "@/env/resolve";
 import { foreground } from "@/process/foreground";
-import { run } from "@/process/run";
 import type { ProcessResult } from "@/process/run";
 import { detect } from "@/proxy/detect";
+import { Execution } from "@/session/execution";
 import { Journal } from "@/session/lifecycle";
 import { acquire, running } from "@/session/lock";
 import { Sessions } from "@/session/store";
@@ -37,16 +37,13 @@ export async function launch(
   const { git, store } = await context(cwd);
   const config = await load(git.root, extension);
   const workspace = Workspaces.name(config.name, git);
-  const controller = new AbortController();
-  const cancellation = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
-  const commands = new Set<Promise<ProcessResult>>();
   let release: (() => Promise<void>) | undefined;
   let journal: Journal | undefined;
+  let execution: Execution | undefined;
   let closing: Promise<void> | undefined;
   function cleanup(): Promise<void> {
     closing ??= (async () => {
-      controller.abort();
-      await Promise.allSettled(commands);
+      await execution?.stop();
       try {
         const failure = await journal?.cleanup(ui);
         if (failure) {
@@ -70,7 +67,7 @@ export async function launch(
   }
   try {
     release = await acquire(store);
-    cancellation.throwIfAborted();
+    signal?.throwIfAborted();
     const existing = await store.read();
     if (existing) {
       if (await Sessions.alive(existing)) {
@@ -92,22 +89,25 @@ export async function launch(
     };
     const active = await Journal.create(workspace, store);
     journal = active;
+    const processes = new Execution(active, signal);
+    execution = processes;
+    const cancellation = processes.signal;
     await journal.reserve(config.endpoints, config.hooks.shutdown);
-    const observer = journal.observe();
     ui.start(workspace.name);
     if (config.hooks.bootstrap) {
       const code = await foreground(
         config.hooks.bootstrap,
-        { cwd: workspace.root, env: base, signal: cancellation, ...observer },
+        { cwd: workspace.root, env: base },
         ui,
-        true
+        true,
+        processes.run
       );
       if (code) {
         throw new Error(`Bootstrap hook exited ${code}`);
       }
     }
     const resolver = new Resolver(base, workspace.root, {
-      observer,
+      execute: processes.run,
       signal: cancellation,
     });
     const ports = await Endpoints.ports(config.endpoints, workspace.name, resolver);
@@ -123,22 +123,15 @@ export async function launch(
     await journal.prepare(endpoints, resolver.resolved, proxy);
     await journal.activate(proxy, cancellation);
     ui.showEndpoints(endpoints);
-    const ready = Promise.withResolvers<boolean>();
-    const execution = foreground(
+    const application = await processes.start(
       config.run,
       {
         cwd: workspace.root,
         env: resolver.env,
-        signal: cancellation,
-        ...observer,
-        async onSpawn(pid, token) {
-          await observer.onSpawn?.(pid, token);
-          ready.resolve(true);
-        },
       },
       ui
     );
-    const exited = execution.then(async (code) => {
+    const exited = application.exited.then(async (code) => {
       await cleanup();
       return { code };
     }, rollback);
@@ -146,31 +139,18 @@ export async function launch(
     void exited.catch(() => {
       // The original promise remains rejected for the caller to observe.
     });
-    await Promise.race([ready.promise, exited]);
     return {
       endpoints,
       env: { ...base, ...resolver.resolved },
       async exec(command) {
-        if (cancellation.aborted) {
-          throw new Error("The session has stopped");
-        }
-        const task = run(command, {
+        return await processes.exec(command, {
           cwd: workspace.root,
           env: resolver.env,
-          shouldCapture: true,
-          signal: cancellation,
-          ...active.observeCommand(),
         });
-        commands.add(task);
-        try {
-          return await task;
-        } finally {
-          commands.delete(task);
-        }
       },
       exited,
       stop() {
-        controller.abort();
+        void processes.stop();
         return exited;
       },
       workspace,

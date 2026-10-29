@@ -1,16 +1,17 @@
 import { run } from "@/process/run";
-import type { RunOptions } from "@/process/run";
+import type { ExecutionOptions, Executor } from "@/process/run";
 import type { UI } from "@/ui/index";
 
 export async function foreground(
   command: string,
-  options: RunOptions,
+  options: ExecutionOptions,
   ui: UI,
-  isHook = false
+  isHook = false,
+  execute: Executor = run
 ): Promise<number> {
   const output = ui.output(command, isHook ? 8 : 12);
   try {
-    const result = await run(command, {
+    const result = await execute(command, {
       ...options,
       onOutput: (chunk) => output.write(chunk),
     });

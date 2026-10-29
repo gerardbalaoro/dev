@@ -22,6 +22,12 @@ export interface ProcessResult {
   stderr: string;
 }
 
+export type ExecutionOptions = Omit<RunOptions, "onSpawn" | "onSettled">;
+export type Executor = (
+  command: string | string[],
+  options: ExecutionOptions
+) => Promise<ProcessResult>;
+
 const MaxCapture = 1024 * 1024;
 
 const getSignalExitCode = (signal?: string): number => {
