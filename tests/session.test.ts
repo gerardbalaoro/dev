@@ -1,15 +1,46 @@
-import { stat, writeFile } from "node:fs/promises";
+import { readdir, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 import { createGitRepo, createTempDir } from "@tests/helpers";
 import { describe, expect, it } from "vitest";
 
 import { Identity } from "@/process/identity";
+import { Journal } from "@/session/lifecycle";
 import { acquire } from "@/session/lock";
 import { Store } from "@/session/store";
 import type { Session } from "@/session/types";
+import { UI } from "@/ui/index";
 import { Workspaces } from "@/workspace/resolve";
 
 describe("session", () => {
+  it("retains separate cleanup failures and still attempts shutdown after route failure", async () => {
+    const workspace = await Workspaces.resolve("project", await createGitRepo());
+    const store = new Store(workspace, await createTempDir());
+    const journal = await Journal.create(workspace, store);
+    await journal.reserve({ web: "3000" }, "exit 4");
+    const [claim] = await readdir(store.routesDirectory);
+    if (!claim) {
+      throw new Error("Missing route claim");
+    }
+    await writeFile(path.join(store.routesDirectory, claim), "invalid JSON");
+    const failure = await journal.cleanup({
+      ...UI,
+      error() {},
+      output: () => ({ finish() {}, write() {} }),
+    });
+    expect(failure).toBeInstanceOf(AggregateError);
+    if (!(failure instanceof AggregateError)) {
+      throw new Error("Expected cleanup failures");
+    }
+    expect(failure.errors).toStrictEqual([
+      expect.any(SyntaxError),
+      expect.objectContaining({ message: "Shutdown hook exited 4" }),
+    ]);
+    const pending = await store.read();
+    expect(pending?.pendingRoutes).toHaveLength(1);
+    expect(pending?.shutdown).toBe("exit 4");
+  });
+
   it("writes private state atomically and does not remove a different session", async () => {
     const workspace = await Workspaces.resolve("project", await createGitRepo());
     const store = new Store(workspace, await createTempDir());

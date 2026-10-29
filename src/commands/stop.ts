@@ -45,7 +45,7 @@ async function stop(cwd = process.cwd(), ui: UI = UI): Promise<number> {
       if (await Sessions.alive(session)) {
         throw new Error("The session is still running. Run `dev status` for details.");
       }
-      if (!(await new Journal(session, store).cleanup(ui))) {
+      if (await new Journal(session, store).cleanup(ui)) {
         return 1;
       }
     }

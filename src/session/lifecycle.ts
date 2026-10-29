@@ -161,15 +161,21 @@ export class Journal {
     await this.commit((state) => ({ ...state, status: "running" }));
   }
 
-  async cleanup(ui: UI): Promise<boolean> {
-    let isComplete = true;
+  async cleanup(ui: UI): Promise<AggregateError | undefined> {
+    const errors: Error[] = [];
+    const failure = () =>
+      new AggregateError(
+        errors,
+        errors.map((error) => `Cleanup failed: ${error.message}`).join("\n")
+      );
     const attempt = async (action: () => Promise<void>): Promise<boolean> => {
       try {
         await action();
         return true;
       } catch (error) {
-        isComplete = false;
-        ui.error(`Cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
+        const cause = error instanceof Error ? error : new Error(String(error));
+        errors.push(cause);
+        ui.error(`Cleanup failed: ${cause.message}`);
         return false;
       }
     };
@@ -187,7 +193,7 @@ export class Journal {
         }));
       }))
     ) {
-      return false;
+      return failure();
     }
 
     const tracked = this.state.process;
@@ -207,7 +213,7 @@ export class Journal {
       });
     });
     if (this.state.commands?.length) {
-      return false;
+      return failure();
     }
     {
       const provider = this.state.proxy
@@ -249,13 +255,13 @@ export class Journal {
       });
     }
     if (
-      isComplete &&
+      errors.length === 0 &&
       !this.state.process &&
       !this.state.shutdown &&
       !this.state.pendingRoutes.length
     ) {
       await attempt(() => this.store.remove(this.state.id));
     }
-    return isComplete;
+    return errors.length ? failure() : undefined;
   }
 }

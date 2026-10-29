@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { Identity } from "@/process/identity";
 import { Store } from "@/session/store";
+import { Workspaces } from "@/workspace/resolve";
 
 const Entry = path.resolve(process.env.DEV_TEST_API ?? "src/index.ts");
 const Cli = path.resolve(process.env.DEV_TEST_CLI ?? "src/cli.ts");
@@ -378,14 +379,45 @@ try { await session.exited; } catch(error) { console.log(error.message); }
     const f = await fixture(
       `
 try { await dev.run(async () => { throw new Error("callback failed"); }); }
-catch (error) { console.log(JSON.stringify(error.errors.map(item => item.message))); }
+catch (error) {
+  console.log(JSON.stringify(error.errors.map(item => ({
+    message: item.message,
+    errors: item.errors?.map(failure => failure.message),
+  }))));
+}
 `,
       { hooks: { shutdown: "exit 4" } }
     );
     const output = await f.execute();
     const errors = JSON.parse(output.stdout);
-    expect(errors[0]).toBe("callback failed");
-    expect(errors[1]).toContain("Shutdown hook exited 4");
+    expect(errors[0]).toStrictEqual({ message: "callback failed" });
+    expect(errors[1]).toMatchObject({
+      errors: ["Shutdown hook exited 4"],
+      message: expect.stringContaining("Shutdown hook exited 4"),
+    });
+  }, 25_000);
+
+  it("preserves stale cleanup details when a silent programmatic restart fails", async () => {
+    const f = await fixture(
+      `
+try { await dev.run(); }
+catch (error) {
+  console.log(JSON.stringify({
+    message: error.message,
+    errors: error.errors?.map(failure => failure.message),
+  }));
+}
+`,
+      { hooks: { shutdown: "exit 4" }, run: "exit 0" }
+    );
+    await f.execute();
+    const retried = await f.execute();
+    expect(JSON.parse(retried.stdout)).toMatchObject({
+      errors: ["Shutdown hook exited 4"],
+      message: expect.stringContaining("Stale session cleanup failed"),
+    });
+    const state = await new Store(await Workspaces.git(f.root), f.state).read();
+    expect(state?.shutdown).toBe("exit 4");
   }, 25_000);
 
   it("stops in-flight exec commands and refuses execution after shutdown", async () => {

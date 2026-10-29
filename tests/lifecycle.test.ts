@@ -371,6 +371,28 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     expect(f.proxy.routes).toHaveLength(0);
   }, 15_000);
 
+  it.each([
+    { code: 130, signal: "SIGINT" },
+    { code: 143, signal: "SIGTERM" },
+  ] as const)(
+    "reports failed shutdown after $signal and preserves its exit code",
+    async ({ signal, code }) => {
+      const f = await createFixture({ hooks: { shutdown: "exit 4" } });
+      const owner = launch(f.root, f.env, ["start"]);
+      await waitUntil(async () => {
+        const state = await f.store.read();
+        return state?.status === "running";
+      }, owner.output);
+      owner.child.kill(signal);
+      const exited = await owner.done;
+      expect(exited.code).toBe(code);
+      expect(exited.output).toContain("Shutdown hook exited 4");
+      const state = await f.store.read();
+      expect(state?.shutdown).toBe("exit 4");
+    },
+    15_000
+  );
+
   it("allows main checkout and linked worktree sessions concurrently", async () => {
     const f = await createFixture();
     await execa("git", ["-C", f.root, "add", "."]);

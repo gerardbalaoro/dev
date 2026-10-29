@@ -40,14 +40,6 @@ export async function launch(
   const controller = new AbortController();
   const cancellation = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   const commands = new Set<Promise<ProcessResult>>();
-  const errors: string[] = [];
-  const output: UI = {
-    ...ui,
-    error(message) {
-      errors.push(message);
-      ui.error(message);
-    },
-  };
   let release: (() => Promise<void>) | undefined;
   let journal: Journal | undefined;
   let closing: Promise<void> | undefined;
@@ -56,8 +48,9 @@ export async function launch(
       controller.abort();
       await Promise.allSettled(commands);
       try {
-        if (journal && !(await journal.cleanup(output))) {
-          throw new Error(errors.join("\n") || "Cleanup failed");
+        const failure = await journal?.cleanup(ui);
+        if (failure) {
+          throw failure;
         }
       } finally {
         await release?.();
@@ -84,9 +77,11 @@ export async function launch(
         throw running(existing.workspace, existing.pid);
       }
       ui.info("Cleaning up the previous session");
-      if (!(await new Journal(existing, store).cleanup(output))) {
-        throw new Error(
-          "Stale session cleanup failed; inspect the reported errors before restarting"
+      const failure = await new Journal(existing, store).cleanup(ui);
+      if (failure) {
+        throw new AggregateError(
+          failure.errors,
+          `Stale session cleanup failed: ${failure.message}`
         );
       }
     }
