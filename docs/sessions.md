@@ -4,9 +4,13 @@
 
 ## Commands
 
-`dev exec` requires a running session. It reuses the session's ports and environment without
-starting services or allocating new ports. Arguments after `exec`, including `--help`, are passed to
-the child command. For shell syntax, invoke a shell explicitly:
+`dev exec` requires a running session. It inherits the invoking shell's environment, then overrides
+matching variables with the session's saved generated and configured values. Other inherited
+variables can differ from those present at startup. It reuses the session's ports without starting
+services or allocating new ports.
+
+Arguments after `exec`, including `--help`, are passed to the child command. For shell syntax,
+invoke a shell explicitly:
 
 ```sh
 dev exec sh -c 'echo "$WEB_URL" && npm run db:migrate'
@@ -17,7 +21,7 @@ Commands and hooks run from the Git workspace root; `dev exec` runs from your cu
 commands and `exec` preserve child exit codes; interrupted starts return 130 for SIGINT or 143 for
 SIGTERM.
 
-## Cleanup and recovery
+## Cleanup and Recovery
 
 When the main command exits, you press Ctrl+C, or you run `dev stop`, the session stops its process
 tree, removes its proxy routes, and runs the shutdown hook. Shutdown is also attempted after a

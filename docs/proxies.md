@@ -1,4 +1,4 @@
-# Proxy setup
+# Proxy Setup
 
 [Getting started](../README.md)
 

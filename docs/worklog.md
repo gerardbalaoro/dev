@@ -1,6 +1,9 @@
 # Worklog
 
-## Generated agent skills
+These entries record completed work, with the original task descriptions and validation results.
+Test counts and platform coverage reflect each entry's completion.
+
+## Generated Agent Skills
 
 Register Crust's skills extension on a shared application definition so users can install, repair,
 and uninstall generated skills. Generate the skill files after a successful tsdown build and include
@@ -39,7 +42,7 @@ Validation: the full suite and targeted reruns cover 178 passing tests; six opti
 tests are skipped. All 15 CLI checks and the live-session forwarding test also pass against the
 compiled CLI. Type checking, linting, formatting, the build, and diff whitespace checks pass.
 
-## Lifecycle gap fixes
+## Lifecycle Gap Fixes
 
 Persist concurrent `session.exec()` process identities and serialize journal updates so starts and
 exits cannot overwrite each other's recovery records. After an owner crash, recover each command
@@ -62,7 +65,7 @@ integration tests also pass against the compiled package, including CLI invocati
 TypeScript loader. Type checking, linting, formatting, the build, and diff whitespace checks pass.
 Native macOS and Windows execution remains unverified.
 
-## Programmatic lifecycle
+## Programmatic Lifecycle
 
 Add the default `dev` instance, independent `Dev(cwd?)` builders, and deferred `port`, `env`, and
 `docker` helper objects. Merge fluent extensions over discovered configuration before validation,
@@ -88,7 +91,7 @@ Validation: 154 tests pass; six optional live-proxy tests are skipped. All 12 pr
 integration tests also pass against the JavaScript distribution. Type checking, linting, formatting,
 and the build pass. The inline ESM regression was reproduced before its launch-argument fix.
 
-## Test signal audit
+## Test Signal Audit
 
 Apply
 [useless-test-pruner](https://github.com/drmrduck/skills/blob/main/useless-test-pruner/SKILL.md). No
@@ -107,7 +110,7 @@ the original production source after every probe. Zero tests deleted; three stre
 Validation: 141 tests pass and six optional live-proxy tests are skipped. Lint, formatting, type
 checking, and the build pass. No coverage was removed; code-coverage percentages were not measured.
 
-## Module exports
+## Module Exports
 
 Use PascalCase for schemas, constants, and singleton objects. Group related operations under
 `Workspaces`, `Sessions`, `Identity`, and `Endpoints`, and shorten module-local export names. Each
@@ -117,7 +120,7 @@ imports, tests, and the public API documentation for the new names.
 Validation: 141 tests pass; six optional live-proxy tests are skipped. Type checking, linting,
 formatting, the build, and built CLI/API smoke checks pass.
 
-## Initial implementation and review
+## Initial Implementation and Review
 
 Implement the `@gblab/dev` CLI and API for worktree-specific development ports, URLs, environment
 expressions, and recoverable sessions with Caddy and Portless.

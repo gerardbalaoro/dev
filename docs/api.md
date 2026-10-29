@@ -55,8 +55,9 @@ after `start()` do not modify that session.
 - Repeated fluent calls apply in order. The last supplied value wins.
 - Passing a command to `start()` or `run()` overrides only that invocation's main command.
 
-Helpers return expression strings, so they work in config files, fluent settings, and JavaScript
-template strings. They do no I/O when called:
+Helpers return expression strings and do no I/O when called. Use them in endpoint ports and `env`
+values in configuration files or fluent settings. You can embed these expressions in JavaScript
+template strings:
 
 | Helper                       | Resolution                                                         |
 | ---------------------------- | ------------------------------------------------------------------ |
@@ -68,7 +69,7 @@ Environment expressions resolve in declaration order. Reference a generated or e
 reuse its port; another `port.free()` expression selects another port. Selected ports are not held
 open for the application, which must still handle binding failures.
 
-## Explicit ownership
+## Explicit Ownership
 
 `start(command?)` launches the configured application and returns a `Running` session while the
 application continues in the background. Stop the session in a `finally` block:
@@ -97,7 +98,7 @@ reject it. `stop()` requests shutdown and returns that same promise; repeated ca
 Natural application exit also starts cleanup, including cancellation of any in-flight
 `session.exec()` commands. Further execution on a stopped session rejects.
 
-## Managed lifetime
+## Managed Lifetime
 
 `run()` owns cleanup. Without a callback it waits for application exit. With a callback it stops the
 application when the callback returns or throws, waits for cleanup, and returns the callback's

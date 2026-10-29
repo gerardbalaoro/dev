@@ -2,7 +2,7 @@
 
 [Getting started](../README.md)
 
-Use `${…}` inside configuration strings to resolve values:
+Use `${…}` inside endpoint port strings and `env` values to resolve expressions:
 
 | Expression                                | Result                                                      |
 | ----------------------------------------- | ----------------------------------------------------------- |
@@ -11,6 +11,11 @@ Use `${…}` inside configuration strings to resolve values:
 | `${exec('command')}`                      | Run a shell command and use its trimmed standard output.    |
 | `${docker.compose.port('service', 5432)}` | Read a running Docker Compose service's published TCP port. |
 
+`run`, `hooks.bootstrap`, and `hooks.shutdown` go directly to the shell without expression
+resolution. Use your shell's variable syntax in these commands, such as
+`"run": "npm run dev -- --port $WEB_PORT"` on Unix. Bootstrap runs before endpoint ports and
+configured environment values are available.
+
 Startup runs in this order:
 
 1. Set workspace variables and run `hooks.bootstrap` with the inherited environment.
@@ -18,10 +23,14 @@ Startup runs in this order:
 3. Resolve `env` values in declaration order.
 4. Publish proxy routes and run `run` with the resolved environment.
 
-Use `env('NAME')` to reference an earlier value; missing values and forward references fail with an
-error. Calling `port()` again allocates another port, so use `env('WEB_PORT')` to reuse an
-endpoint's port. Endpoint expressions must resolve to integers from 1 to 65535. Ports are selected
-before servers start; applications must still handle binding failures.
+`env('NAME')` reads the current value from the inherited environment or an earlier resolution. If a
+configured variable appears later, the reference reads its inherited value, if present. If neither
+source supplies a value, resolution fails. Declare configured values before the expressions that
+reference them to avoid an unintended inherited value.
+
+Calling `port()` again allocates another port. Use `env('WEB_PORT')` to reuse an endpoint's port.
+Endpoint expressions must resolve to integers from 1 to 65535. Ports are selected before servers
+start. Applications must still handle binding failures.
 
 Expressions use a small subset of JavaScript template-literal syntax: literal strings, numbers,
 booleans and null, nested template literals, and direct calls to the helpers above. Helper calls and
