@@ -13,19 +13,14 @@ describe("environment expressions", () => {
     `\${exec('printf x >> calls; printf value').trim()}`,
     `\${exec('printf x >> calls')}\${port().toString()}`,
     `\${exec('printf x >> calls')}\${1 + 1}`,
-  ])(
-    "rejects unsupported syntax before executing any shell command: %s",
-    async (expression) => {
-      const root = await createTempDir();
-      const context = new Resolver({}, root);
-      await expect(context.resolveValue(expression)).rejects.toThrow(
-        "Unsupported expression"
-      );
-      await expect(readFile(path.join(root, "calls"))).rejects.toMatchObject({
-        code: "ENOENT",
-      });
-    }
-  );
+  ])("rejects unsupported syntax before executing any shell command: %s", async (expression) => {
+    const root = await createTempDir();
+    const context = new Resolver({}, root);
+    await expect(context.resolveValue(expression)).rejects.toThrow("Unsupported expression");
+    await expect(readFile(path.join(root, "calls"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
 
   it("resolves once, in order, inheriting earlier values in commands", async () => {
     let calls = 0;
@@ -58,25 +53,19 @@ describe("environment expressions", () => {
 
   it("preserves trimmed command stdout and nested shell substitutions", async () => {
     const context = new Resolver({}, await createTempDir());
-    await expect(
-      context.resolveValue(`\${exec('printf "  hello  "')}`)
-    ).resolves.toBe("hello");
-    await expect(
-      context.resolveValue(`\${exec('printf "%s" "$(printf nested)"')}`)
-    ).resolves.toBe("nested");
-    await expect(
-      context.resolveValue(`\${exec('(printf parens)')}`)
-    ).resolves.toBe("parens");
+    await expect(context.resolveValue(`\${exec('printf "  hello  "')}`)).resolves.toBe("hello");
+    await expect(context.resolveValue(`\${exec('printf "%s" "$(printf nested)"')}`)).resolves.toBe(
+      "nested"
+    );
+    await expect(context.resolveValue(`\${exec('(printf parens)')}`)).resolves.toBe("parens");
   });
 
   it("rejects missing and forward environment references and command failures", async () => {
     const context = new Resolver({}, await createTempDir());
-    await expect(
-      context.resolve({ A: `\${env('B')}`, B: "later" })
-    ).rejects.toThrow("not resolved");
-    await expect(context.resolveValue(`\${exec('exit 7')}`)).rejects.toThrow(
-      "exit 7"
+    await expect(context.resolve({ A: `\${env('B')}`, B: "later" })).rejects.toThrow(
+      "not resolved"
     );
+    await expect(context.resolveValue(`\${exec('exit 7')}`)).rejects.toThrow("exit 7");
   });
 
   it.each([`\${port(2)}`, `\${env()}`, `\${exec('')}`, `\${exec(42)}`])(
@@ -109,17 +98,15 @@ describe("environment expressions", () => {
       },
       current: () => value,
     };
-    await expect(
-      interpolate(`\${advance()}-\${current()}-\${advance()}`, context)
-    ).resolves.toBe("1-1-2");
+    await expect(interpolate(`\${advance()}-\${current()}-\${advance()}`, context)).resolves.toBe(
+      "1-1-2"
+    );
   });
 
   it.each([`\${missing()}`, `\${docker.compose.missing()}`, `\${value()}`])(
     "throws for invalid calls instead of returning undefined: %s",
     async (input) => {
-      await expect(interpolate(input, {})).rejects.toThrow(
-        "Template evaluation failed"
-      );
+      await expect(interpolate(input, {})).rejects.toThrow("Template evaluation failed");
     }
   );
 
@@ -132,28 +119,26 @@ describe("environment expressions", () => {
     ).rejects.toBe(error);
   });
 
-  it.each([
-    `\${port(`,
-    `\${port(}`,
-    `\${port()}\` + \`ignored`,
-    `\${port()}\`; 'ignored'`,
-  ])("rejects malformed or partially parsed templates: %s", async (input) => {
-    let calls = 0;
-    await expect(
-      interpolate(input, {
-        port: () => {
-          calls += 1;
-          return calls;
-        },
-      })
-    ).rejects.toThrow(SyntaxError);
-    expect(calls).toBe(0);
-  });
+  it.each([`\${port(`, `\${port(}`, `\${port()}\` + \`ignored`, `\${port()}\`; 'ignored'`])(
+    "rejects malformed or partially parsed templates: %s",
+    async (input) => {
+      let calls = 0;
+      await expect(
+        interpolate(input, {
+          port: () => {
+            calls += 1;
+            return calls;
+          },
+        })
+      ).rejects.toThrow(SyntaxError);
+      expect(calls).toBe(0);
+    }
+  );
 
   it("handles quoted braces and nested template literals", async () => {
-    await expect(
-      interpolate(`\${\`value-\${env('VALUE')}\`}`, { env: () => "}" })
-    ).resolves.toBe("value-}");
+    await expect(interpolate(`\${\`value-\${env('VALUE')}\`}`, { env: () => "}" })).resolves.toBe(
+      "value-}"
+    );
   });
 
   it("preserves plain strings and supports escaped literal interpolation", async () => {

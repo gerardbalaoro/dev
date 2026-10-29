@@ -16,10 +16,7 @@ function directory(environment: NodeJS.ProcessEnv = process.env): string {
     return environment.DEV_STATE_DIR;
   }
   if (process.platform === "linux") {
-    return path.join(
-      environment.XDG_STATE_HOME || path.join(homedir(), ".local", "state"),
-      "dev"
-    );
+    return path.join(environment.XDG_STATE_HOME || path.join(homedir(), ".local", "state"), "dev");
   }
   return envPaths("dev", { suffix: "" }).data;
 }
@@ -47,19 +44,13 @@ export class Store {
 
   async read(): Promise<Session | undefined> {
     try {
-      const parsed = SessionSchema.parse(
-        JSON.parse(await readFile(this.file, "utf-8"))
-      );
+      const parsed = SessionSchema.parse(JSON.parse(await readFile(this.file, "utf-8")));
       if (parsed.root !== this.workspace.root) {
         throw new Error("Session workspace root does not match");
       }
       return parsed;
     } catch (error) {
-      if (
-        error instanceof Error &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         return undefined;
       }
       throw new Error(
@@ -98,16 +89,12 @@ function alive(session: Session): Promise<boolean> {
   });
 }
 
-async function get(
-  workspace: Pick<Workspace, "root">
-): Promise<Session | undefined> {
+async function get(workspace: Pick<Workspace, "root">): Promise<Session | undefined> {
   const session = await new Store(workspace).read();
   return session && (await alive(session)) ? session : undefined;
 }
 
-async function env(
-  workspace: Pick<Workspace, "root">
-): Promise<Record<string, string>> {
+async function env(workspace: Pick<Workspace, "root">): Promise<Record<string, string>> {
   const session = await get(workspace);
   if (!session || session.status !== "running") {
     throw new Error(

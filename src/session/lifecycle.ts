@@ -70,21 +70,12 @@ export class Journal {
     }
   }
 
-  async reserve(
-    endpoints: Record<string, EndpointConfig>,
-    shutdown?: string
-  ): Promise<void> {
-    const pendingRoutes = Object.entries(endpoints).map(
-      ([name, definition]) => ({
-        hostname: hostname(
-          name,
-          this.state.workspace,
-          ResolvedEndpointSchema.parse(definition).root
-        ),
-        owner: this.state.id,
-        root: this.state.root,
-      })
-    );
+  async reserve(endpoints: Record<string, EndpointConfig>, shutdown?: string): Promise<void> {
+    const pendingRoutes = Object.entries(endpoints).map(([name, definition]) => ({
+      hostname: hostname(name, this.state.workspace, ResolvedEndpointSchema.parse(definition).root),
+      owner: this.state.id,
+      root: this.state.root,
+    }));
     await this.commit((state) => ({ ...state, pendingRoutes }));
     await Array.fromAsync(pendingRoutes, (claim) => this.routes.reserve(claim));
     // Arm rollback only after claims succeed, before any bootstrap side effects.
@@ -93,13 +84,10 @@ export class Journal {
 
   observe(): Pick<RunOptions, "onSpawn" | "onSettled"> {
     return {
-      onSettled: () =>
-        this.commit((state) => ({ ...state, process: undefined })),
+      onSettled: () => this.commit((state) => ({ ...state, process: undefined })),
       onSpawn: async (pid, groupToken) => {
         if (this.state.process) {
-          throw new Error(
-            "A managed process is already active in this session"
-          );
+          throw new Error("A managed process is already active in this session");
         }
         const identity = await Identity.get(pid);
         await this.commit((state) => ({
@@ -117,9 +105,7 @@ export class Journal {
         if (token) {
           await this.commit((state) => ({
             ...state,
-            commands: state.commands?.filter(
-              (command) => command.groupToken !== token
-            ),
+            commands: state.commands?.filter((command) => command.groupToken !== token),
           }));
         }
       },
@@ -154,10 +140,7 @@ export class Journal {
     this.isPrepared = true;
   }
 
-  async activate(
-    provider: Provider | undefined,
-    signal: AbortSignal
-  ): Promise<void> {
+  async activate(provider: Provider | undefined, signal: AbortSignal): Promise<void> {
     if (this.state.status !== "starting" || !this.isPrepared) {
       throw new Error("Only a prepared starting session can be activated");
     }
@@ -186,9 +169,7 @@ export class Journal {
         return true;
       } catch (error) {
         isComplete = false;
-        ui.error(
-          `Cleanup failed: ${error instanceof Error ? error.message : String(error)}`
-        );
+        ui.error(`Cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
         return false;
       }
     };
@@ -196,9 +177,7 @@ export class Journal {
       !(await attempt(async () => {
         const owner = await Identity.get(process.pid);
         if (!owner.startToken) {
-          throw new Error(
-            "Cannot establish the cleanup owner's process identity"
-          );
+          throw new Error("Cannot establish the cleanup owner's process identity");
         }
         await this.commit((state) => ({
           ...state,
@@ -223,9 +202,7 @@ export class Journal {
         await Identity.stop(command);
         await this.commit((state) => ({
           ...state,
-          commands: state.commands?.filter(
-            (pending) => pending.pid !== command.pid
-          ),
+          commands: state.commands?.filter((pending) => pending.pid !== command.pid),
         }));
       });
     });

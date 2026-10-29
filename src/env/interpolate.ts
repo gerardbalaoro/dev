@@ -5,10 +5,7 @@ import { z } from "zod";
 const ValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 type Value = z.infer<typeof ValueSchema>;
 type Evaluation = () => Promise<Value>;
-export type ExpressionContext = Record<
-  string,
-  (...args: Value[]) => Value | Promise<Value>
->;
+export type ExpressionContext = Record<string, (...args: Value[]) => Value | Promise<Value>>;
 
 function getResolverName(node: Expression): string {
   if (node.type === "Identifier") {
@@ -34,9 +31,7 @@ function compile(node: Expression, context: ExpressionContext): Evaluation {
     }
   }
   if (node.type === "TemplateLiteral") {
-    const evaluations = node.expressions.map((entry) =>
-      compile(entry, context)
-    );
+    const evaluations = node.expressions.map((entry) => compile(entry, context));
     const parts = node.quasis.map((part) => {
       if (part.value.cooked === null) {
         throw new SyntaxError("Invalid template escape");
@@ -51,11 +46,7 @@ function compile(node: Expression, context: ExpressionContext): Evaluation {
       return values.join("") + parts.at(-1);
     };
   }
-  if (
-    node.type === "CallExpression" &&
-    !node.optional &&
-    node.callee.type !== "Super"
-  ) {
+  if (node.type === "CallExpression" && !node.optional && node.callee.type !== "Super") {
     const name = getResolverName(node.callee);
     const resolver = Object.hasOwn(context, name) ? context[name] : undefined;
     if (!resolver) {
@@ -68,9 +59,7 @@ function compile(node: Expression, context: ExpressionContext): Evaluation {
       return compile(argument, context);
     });
     return async () => {
-      const values = await Array.fromAsync(arguments_, (evaluate) =>
-        evaluate()
-      );
+      const values = await Array.fromAsync(arguments_, (evaluate) => evaluate());
       const result = await resolver(...values);
       return ValueSchema.parse(result);
     };
@@ -78,10 +67,7 @@ function compile(node: Expression, context: ExpressionContext): Evaluation {
   throw new SyntaxError(`Unsupported expression: ${node.type}`);
 }
 
-export async function interpolate(
-  input: string,
-  context: ExpressionContext
-): Promise<string> {
+export async function interpolate(input: string, context: ExpressionContext): Promise<string> {
   if (!input.includes("${")) {
     return input;
   }

@@ -31,9 +31,9 @@ describe("route claims", () => {
     try {
       await provider.ensureReady();
       await new Routes(directory).publish(first, provider);
-      await expect(
-        new Routes(directory).publish(second, provider)
-      ).rejects.toThrow("already claimed");
+      await expect(new Routes(directory).publish(second, provider)).rejects.toThrow(
+        "already claimed"
+      );
       await new Routes(directory).remove(second, provider);
       expect(fixture.routes).toMatchObject([
         {
@@ -80,12 +80,8 @@ describe("route claims", () => {
         registry.publish(first, provider),
         registry.publish(second, provider),
       ]);
-      expect(
-        results.filter((result) => result.status === "fulfilled")
-      ).toHaveLength(1);
-      expect(
-        results.filter((result) => result.status === "rejected")
-      ).toHaveLength(1);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
       const winner = results[0]?.status === "fulfilled" ? first : second;
       const loser = results[0]?.status === "fulfilled" ? second : first;
       await registry.remove(loser, provider);

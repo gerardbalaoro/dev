@@ -1,10 +1,7 @@
 import { ResolvedEndpointSchema } from "@/config/schema";
 import type { EndpointConfig } from "@/config/types";
 import { prefix, hostname } from "@/endpoints/hostname";
-import type {
-  Endpoints as ResolvedEndpoints,
-  EndpointPorts,
-} from "@/endpoints/types";
+import type { Endpoints as ResolvedEndpoints, EndpointPorts } from "@/endpoints/types";
 import type { Resolver } from "@/env/resolve";
 import type { Provider } from "@/proxy/types";
 

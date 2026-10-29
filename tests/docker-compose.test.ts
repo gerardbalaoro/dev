@@ -70,27 +70,14 @@ else if (process.env.DOCKER_TEST_FAIL) {
         Object.fromEntries([
           ["PREVIOUS", "already-resolved"],
           ["POSTGRES_PORT", `\${docker.compose.port('postgres', 5432)}`],
-          [
-            "DATABASE_URL",
-            `postgresql://localhost:\${env('POSTGRES_PORT')}/app`,
-          ],
+          ["DATABASE_URL", `postgresql://localhost:\${env('POSTGRES_PORT')}/app`],
         ])
       );
-      expect(context.resolved.DATABASE_URL).toBe(
-        "postgresql://localhost:49152/app"
-      );
+      expect(context.resolved.DATABASE_URL).toBe("postgresql://localhost:49152/app");
       expect(
         JSON.parse(await readFile(path.join(root, "docker-call.json"), "utf-8"))
       ).toStrictEqual({
-        args: [
-          "compose",
-          "ps",
-          "--format",
-          "json",
-          "--status",
-          "running",
-          "postgres",
-        ],
+        args: ["compose", "ps", "--format", "json", "--status", "running", "postgres"],
         previous: "already-resolved",
         project: "project-worktree",
         workspace: "project-worktree",
@@ -110,22 +97,10 @@ else if (process.env.DOCKER_TEST_FAIL) {
     );
     const context = new Resolver(env, root);
     await expect(
-      context.resolveValue(
-        `http://localhost:${docker.port("mail-pit", 8025)}/inbox`
-      )
+      context.resolveValue(`http://localhost:${docker.port("mail-pit", 8025)}/inbox`)
     ).resolves.toBe("http://localhost:49152/inbox");
-    expect(
-      JSON.parse(await readFile(path.join(root, "docker-call.json"), "utf-8"))
-    ).toMatchObject({
-      args: [
-        "compose",
-        "ps",
-        "--format",
-        "json",
-        "--status",
-        "running",
-        "mail-pit",
-      ],
+    expect(JSON.parse(await readFile(path.join(root, "docker-call.json"), "utf-8"))).toMatchObject({
+      args: ["compose", "ps", "--format", "json", "--status", "running", "mail-pit"],
     });
   });
 
@@ -138,28 +113,23 @@ else if (process.env.DOCKER_TEST_FAIL) {
     `\${docker.compose.port('postgres', 5432}`,
     `\${docker.compose.ports('postgres', 5432)}`,
     `\${docker.compose.port('postgres', '5432')}`,
-  ])(
-    "rejects invalid arguments without executing Docker: %s",
-    async (expression) => {
-      const { root, env } = await createDocker();
-      const context = new Resolver(env, root);
-      await expect(context.resolveValue(expression)).rejects.toThrow(
-        /too_small|too_big|invalid_format|invalid_type|Unexpected token|Template evaluation failed/u
-      );
-      await expect(
-        readFile(path.join(root, "docker-call.json"))
-      ).rejects.toMatchObject({
-        code: "ENOENT",
-      });
-    }
-  );
+  ])("rejects invalid arguments without executing Docker: %s", async (expression) => {
+    const { root, env } = await createDocker();
+    const context = new Resolver(env, root);
+    await expect(context.resolveValue(expression)).rejects.toThrow(
+      /too_small|too_big|invalid_format|invalid_type|Unexpected token|Template evaluation failed/u
+    );
+    await expect(readFile(path.join(root, "docker-call.json"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
 
   it("reports Docker command failures", async () => {
     const { root, env } = await createDocker();
     const failing = new Resolver({ ...env, DOCKER_TEST_FAIL: "1" }, root);
-    await expect(
-      failing.resolveValue(`\${docker.compose.port('postgres', 5432)}`)
-    ).rejects.toThrow("service is not running");
+    await expect(failing.resolveValue(`\${docker.compose.port('postgres', 5432)}`)).rejects.toThrow(
+      "service is not running"
+    );
   });
 
   it("selects only the requested TCP port across JSON Lines", async () => {
@@ -186,9 +156,9 @@ else if (process.env.DOCKER_TEST_FAIL) {
         .join("\n")
     );
     const context = new Resolver(env, root);
-    await expect(
-      context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)
-    ).resolves.toBe("49152");
+    await expect(context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)).resolves.toBe(
+      "49152"
+    );
   });
 
   it.each([
@@ -229,16 +199,13 @@ else if (process.env.DOCKER_TEST_FAIL) {
         .join("\n"),
       "found 2",
     ],
-  ])(
-    "rejects missing or ambiguous published ports: %s",
-    async (output, error) => {
-      const { root, env } = await createDocker(output);
-      const context = new Resolver(env, root);
-      await expect(
-        context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)
-      ).rejects.toThrow(error);
-    }
-  );
+  ])("rejects missing or ambiguous published ports: %s", async (output, error) => {
+    const { root, env } = await createDocker(output);
+    const context = new Resolver(env, root);
+    await expect(context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)).rejects.toThrow(
+      error
+    );
+  });
 
   it.each([
     "not json",
@@ -253,9 +220,9 @@ else if (process.env.DOCKER_TEST_FAIL) {
   ])("rejects invalid Compose JSON: %s", async (output) => {
     const { root, env } = await createDocker(output);
     const context = new Resolver(env, root);
-    await expect(
-      context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)
-    ).rejects.toThrow(/JSON|Unexpected|Invalid|Too big/u);
+    await expect(context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)).rejects.toThrow(
+      /JSON|Unexpected|Invalid|Too big/u
+    );
   });
 
   it("can cancel a stuck Docker command through normal process supervision", async () => {
@@ -264,9 +231,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
     const context = new Resolver({ ...env, DOCKER_TEST_HANG: "1" }, root, {
       signal: controller.signal,
     });
-    const lookup = context.resolveValue(
-      `\${docker.compose.port('postgres', 5432)}`
-    );
+    const lookup = context.resolveValue(`\${docker.compose.port('postgres', 5432)}`);
     const cancel = (async () => {
       try {
         await expect

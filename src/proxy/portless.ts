@@ -48,14 +48,10 @@ export class Portless implements Provider {
       cwd: this.cwd,
       env: this.env,
       shouldCapture: true,
-      signal: this.options.signal
-        ? AbortSignal.any([this.options.signal, timeout])
-        : timeout,
+      signal: this.options.signal ? AbortSignal.any([this.options.signal, timeout]) : timeout,
     });
     if (result.code) {
-      throw new Error(
-        `Portless ${args[0]} failed: ${result.stderr || result.stdout}`
-      );
+      throw new Error(`Portless ${args[0]} failed: ${result.stderr || result.stdout}`);
     }
     return result.stdout.trim();
   }
@@ -98,13 +94,8 @@ export class Portless implements Provider {
   }
 
   private async getUrl(hostname: string): Promise<URL> {
-    const url = new URL(
-      await this.run(["get", Portless.getAlias(hostname), "--no-worktree"])
-    );
-    if (
-      url.hostname !== hostname ||
-      !["http:", "https:"].includes(url.protocol)
-    ) {
+    const url = new URL(await this.run(["get", Portless.getAlias(hostname), "--no-worktree"]));
+    if (url.hostname !== hostname || !["http:", "https:"].includes(url.protocol)) {
       throw new Error(
         "Portless must serve the logical .localhost hostname (LAN/custom-only TLD mode is incompatible)"
       );
@@ -120,9 +111,7 @@ export class Portless implements Provider {
   }
 
   async getEndpointUrl(hostname: string): Promise<string> {
-    const url = this.origin
-      ? new URL(this.origin)
-      : await this.getUrl(hostname);
+    const url = this.origin ? new URL(this.origin) : await this.getUrl(hostname);
     url.hostname = hostname;
     return url.origin;
   }
@@ -131,17 +120,11 @@ export class Portless implements Provider {
     await this.run(["alias", Portless.getAlias(hostname), String(port)]);
   }
 
-  async unpublish({
-    hostname,
-  }: Pick<RouteClaim, "hostname" | "owner">): Promise<void> {
+  async unpublish({ hostname }: Pick<RouteClaim, "hostname" | "owner">): Promise<void> {
     try {
       await this.run(["alias", "--remove", Portless.getAlias(hostname)]);
     } catch (error) {
-      if (
-        !(
-          error instanceof Error && error.message.includes("No alias found for")
-        )
-      ) {
+      if (!(error instanceof Error && error.message.includes("No alias found for"))) {
         throw error;
       }
     }

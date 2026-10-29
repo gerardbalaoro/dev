@@ -26,11 +26,7 @@ export default defineConfig({
     },
   ],
   rules: {
-    "eslint/func-style": [
-      "error",
-      "declaration",
-      { allowArrowFunctions: true },
-    ],
+    "eslint/func-style": ["error", "declaration", { allowArrowFunctions: true }],
     // TypeScript checks duplicate declarations and allows separate type/value names.
     "eslint/no-redeclare": "off",
   },

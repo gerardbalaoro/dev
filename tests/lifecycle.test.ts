@@ -16,11 +16,7 @@ import { Identity } from "@/process/identity";
 import { Store } from "@/session/store";
 import { Workspaces } from "@/workspace/resolve";
 
-async function waitUntil(
-  check: () => Promise<boolean>,
-  diagnostic = () => "",
-  timeout = 10_000
-) {
+async function waitUntil(check: () => Promise<boolean>, diagnostic = () => "", timeout = 10_000) {
   if (await check()) {
     return;
   }
@@ -138,9 +134,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     assert.ok(session);
     await waitUntil(async () => {
       try {
-        const response = await fetch(
-          `http://127.0.0.1:${session.env.WEB_PORT}`
-        );
+        const response = await fetch(`http://127.0.0.1:${session.env.WEB_PORT}`);
         return response.ok;
       } catch {
         return false;
@@ -178,15 +172,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         }).toStrictEqual({
           code: 7,
           env: {
-            args: [
-              "space value",
-              "",
-              "--help",
-              "--version",
-              "--unknown=value",
-              "--",
-              "-x",
-            ],
+            args: ["space value", "", "--help", "--version", "--unknown=value", "--", "-x"],
             port: session.env.WEB_PORT,
             url: session.env.WEB_URL,
           },
@@ -233,12 +219,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         workspace: "project",
       },
     ]);
-    const result = await launch(f.root, f.env, [
-      "exec",
-      "node",
-      "-e",
-      "process.exit(0)",
-    ]).done;
+    const result = await launch(f.root, f.env, ["exec", "node", "-e", "process.exit(0)"]).done;
     expect(result.output).toContain("Run `dev start` first");
   }, 25_000);
 
@@ -248,9 +229,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     expect(started.code).toBe(9);
     await expect(f.store.read()).resolves.toBeUndefined();
     expect(f.proxy.routes).toHaveLength(0);
-    await expect(
-      readFile(path.join(f.root, "hooks.jsonl"), "utf-8")
-    ).resolves.toContain("shutdown");
+    await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
+      "shutdown"
+    );
   });
 
   it("rejects a second clone claiming the same hostname without removing the first route", async () => {
@@ -266,9 +247,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     expect(collision.code).toBe(1);
     expect(collision.output).toContain("already claimed");
     expect(first.proxy.routes).toStrictEqual(route);
-    await expect(
-      readFile(path.join(second.root, "hooks.jsonl"))
-    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(path.join(second.root, "hooks.jsonl"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     await launch(first.root, first.env, ["stop"]).done;
     await owner.done;
   }, 15_000);
@@ -302,9 +283,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     expect(result.output).toContain("Bootstrap hook exited 8");
     expect(f.proxy.calls).toHaveLength(0);
     await expect(f.store.read()).resolves.toBeUndefined();
-    await expect(
-      readFile(path.join(f.root, "hooks.jsonl"), "utf-8")
-    ).resolves.toContain("shutdown");
+    await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
+      "shutdown"
+    );
   });
 
   it("retains failed route cleanup and does not repeat completed shutdown on retry", async () => {
@@ -312,9 +293,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     f.proxy.failDelete();
     const started = await launch(f.root, f.env, ["start"]).done;
     expect(started.code).toBe(1);
-    await expect(
-      readFile(path.join(f.root, "hooks.jsonl"), "utf-8")
-    ).resolves.toContain("shutdown");
+    await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
+      "shutdown"
+    );
     const pending = await f.store.read();
     assert.ok(pending);
     expect({
@@ -348,9 +329,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     f.proxy.failPublish();
     const started = await launch(f.root, f.env, ["start"]).done;
     expect(started.code).toBe(1);
-    await expect(
-      readFile(path.join(f.root, "hooks.jsonl"), "utf-8")
-    ).resolves.toContain("shutdown");
+    await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
+      "shutdown"
+    );
     await expect(f.store.read()).resolves.toBeUndefined();
   });
 
@@ -371,9 +352,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const exited = await owner.done;
     expect(exited.code).toBe(143);
     await expect(f.store.read()).resolves.toBeUndefined();
-    await expect(
-      readFile(path.join(f.root, "hooks.jsonl"), "utf-8")
-    ).resolves.toContain("shutdown");
+    await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
+      "shutdown"
+    );
   }, 15_000);
 
   it("SIGINT stops the main process and executes shutdown", async () => {
@@ -405,19 +386,8 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       "config",
     ]);
     const linked = path.join(await createTempDir(), "feature");
-    await execa("git", [
-      "-C",
-      f.root,
-      "worktree",
-      "add",
-      "-qb",
-      "feature",
-      linked,
-    ]);
-    const otherStore = new Store(
-      await Workspaces.resolve("project", linked),
-      f.state
-    );
+    await execa("git", ["-C", f.root, "worktree", "add", "-qb", "feature", linked]);
+    const otherStore = new Store(await Workspaces.resolve("project", linked), f.state);
     const main = launch(f.root, f.env, ["start"]);
     const other = launch(linked, f.env, ["start"]);
     await waitUntil(
@@ -479,9 +449,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         routes: f.proxy.routes,
         session: await f.store.read(),
       }).toStrictEqual({ code: 0, routes: [], session: undefined });
-      await expect(
-        fetch(`http://127.0.0.1:${old.env.WEB_PORT}`)
-      ).rejects.toThrow("fetch failed");
+      await expect(fetch(`http://127.0.0.1:${old.env.WEB_PORT}`)).rejects.toThrow("fetch failed");
       const next = launch(f.root, f.env, ["start"]);
       await waitUntil(async () => {
         const session = await f.store.read();
@@ -519,9 +487,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const s = await f.store.read();
-      return (
-        s?.status === "starting" && !!s.process && f.proxy.calls.length > 0
-      );
+      return s?.status === "starting" && !!s.process && f.proxy.calls.length > 0;
     }, owner.output);
     await launch(f.root, f.env, ["stop"]).done;
     const exited = await owner.done;
@@ -532,16 +498,13 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
 
   it("fails without a compatible proxy and rolls back infrastructure", async () => {
     const f = await createFixture();
-    const result = await launch(
-      f.root,
-      { ...f.env, CADDY_ADMIN: "http://127.0.0.1:1" },
-      ["start"]
-    ).done;
+    const result = await launch(f.root, { ...f.env, CADDY_ADMIN: "http://127.0.0.1:1" }, ["start"])
+      .done;
     expect(result.code).toBe(1);
     expect(result.output).toContain("No supported local proxy");
-    await expect(
-      readFile(path.join(f.root, "hooks.jsonl"), "utf-8")
-    ).resolves.toContain("shutdown");
+    await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
+      "shutdown"
+    );
     await expect(f.store.read()).resolves.toBeUndefined();
   });
 
@@ -549,11 +512,9 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     "never signals a live process whose PID belongs to a stale owner record",
     async () => {
       const f = await createFixture();
-      const unrelated = spawn(
-        process.execPath,
-        ["-e", "setInterval(() => {}, 1000)"],
-        { stdio: "ignore" }
-      );
+      const unrelated = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+        stdio: "ignore",
+      });
       children.push(unrelated);
       assert.ok(unrelated.pid);
       await f.store.write({
@@ -625,12 +586,8 @@ process.stdout.write(JSON.stringify({
     assert.ok(session);
     expect(session.env.MAIL_PORT).toBe("48025");
     expect(session.env.DATABASE_URL).toBe("postgresql://localhost:45432/app");
-    const result = await launch(f.root, f.env, [
-      "exec",
-      "node",
-      "-p",
-      "process.env.DATABASE_URL",
-    ]).done;
+    const result = await launch(f.root, f.env, ["exec", "node", "-p", "process.env.DATABASE_URL"])
+      .done;
     expect(result.output.trim()).toBe(session.env.DATABASE_URL);
     await launch(f.root, f.env, ["stop"]).done;
     await owner.done;
@@ -656,12 +613,8 @@ process.stdout.write(JSON.stringify({
         output: expect.stringContaining("project"),
       });
       expect(info.output).toContain("running");
-      const executed = await launch(f.root, f.env, [
-        "exec",
-        "node",
-        "-p",
-        "process.env.WEB_PORT",
-      ]).done;
+      const executed = await launch(f.root, f.env, ["exec", "node", "-p", "process.env.WEB_PORT"])
+        .done;
       expect({
         code: executed.code,
         output: executed.output.trim(),
@@ -706,9 +659,10 @@ process.exitCode = existsSync("allow-shutdown") ? 0 : 1;
     expect(session2?.id).toBe(pending.id);
     await writeFile(path.join(f.root, "allow-shutdown"), "");
     const stopped = await launch(f.root, f.env, ["stop"]).done;
-    expect({ code: stopped.code, session: await f.store.read() }).toStrictEqual(
-      { code: 0, session: undefined }
-    );
+    expect({ code: stopped.code, session: await f.store.read() }).toStrictEqual({
+      code: 0,
+      session: undefined,
+    });
     const contents = await readFile(path.join(f.root, "attempts"), "utf-8");
     expect(contents.trim().split("\n")).toHaveLength(3);
   }, 20_000);
@@ -762,9 +716,7 @@ if (!existsSync("shutdown-pid")) {
     await recovery.done;
     const stopped = await launch(f.root, f.env, ["stop"]).done;
     expect(stopped).toMatchObject({ code: 0 });
-    await expect(
-      readFile(path.join(f.root, "shutdown-complete"), "utf-8")
-    ).resolves.toBe("done");
+    await expect(readFile(path.join(f.root, "shutdown-complete"), "utf-8")).resolves.toBe("done");
     await expect(f.store.read()).resolves.toBeUndefined();
   }, 30_000);
 });

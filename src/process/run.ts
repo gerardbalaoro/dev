@@ -28,9 +28,7 @@ const getSignalExitCode = (signal?: string): number => {
   if (!signal) {
     return 1;
   }
-  const entry = Object.entries(constants.signals).find(
-    ([name]) => name === signal
-  );
+  const entry = Object.entries(constants.signals).find(([name]) => name === signal);
   return 128 + (entry?.[1] ?? 1);
 };
 
@@ -43,10 +41,7 @@ function parseCommand(command: string | string[]) {
   return { args, file, shouldUseShell };
 }
 
-export async function run(
-  command: string | string[],
-  options: RunOptions
-): Promise<ProcessResult> {
+export async function run(command: string | string[], options: RunOptions): Promise<ProcessResult> {
   options.signal?.throwIfAborted();
   const invocation = parseCommand(command);
   const output = options.shouldInherit ? "inherit" : "pipe";
@@ -137,9 +132,7 @@ export async function run(
       throw new Error("Command output exceeded the 1 MiB capture limit");
     }
     if (result.failed && result.exitCode === undefined && !result.signal) {
-      throw new Error(
-        `Unable to execute ${invocation.file}: ${result.shortMessage}`
-      );
+      throw new Error(`Unable to execute ${invocation.file}: ${result.shortMessage}`);
     }
     return {
       code: result.exitCode ?? getSignalExitCode(result.signal),

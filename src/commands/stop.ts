@@ -20,9 +20,7 @@ async function stop(cwd = process.cwd(), ui: UI = UI): Promise<number> {
     try {
       process.kill(session.pid, "SIGTERM");
     } catch (error) {
-      if (
-        !(error instanceof Error && "code" in error && error.code === "ESRCH")
-      ) {
+      if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) {
         throw error;
       }
     }
@@ -37,9 +35,7 @@ async function stop(cwd = process.cwd(), ui: UI = UI): Promise<number> {
       }
     }
     if (await Sessions.alive(session)) {
-      throw new Error(
-        `Session ${session.pid} is still shutting down; inspect its terminal`
-      );
+      throw new Error(`Session ${session.pid} is still shutting down; inspect its terminal`);
     }
   }
   const release = await acquire(store);
@@ -47,9 +43,7 @@ async function stop(cwd = process.cwd(), ui: UI = UI): Promise<number> {
     session = await store.read();
     if (session?.id === id) {
       if (await Sessions.alive(session)) {
-        throw new Error(
-          "The session is still running. Run `dev status` for details."
-        );
+        throw new Error("The session is still running. Run `dev status` for details.");
       }
       if (!(await new Journal(session, store).cleanup(ui))) {
         return 1;

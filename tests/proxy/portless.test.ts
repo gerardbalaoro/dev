@@ -36,20 +36,13 @@ if (name === "--remove") {
       );
       const env = {
         ...Object.fromEntries(
-          Object.entries(inherit()).filter(
-            ([key]) => !key.startsWith("PORTLESS_")
-          )
+          Object.entries(inherit()).filter(([key]) => !key.startsWith("PORTLESS_"))
         ),
         PATH: `${root}${path.delimiter}${process.env.PATH ?? ""}`,
       };
-      const directory = path.join(
-        root,
-        hasStateDirectory ? "original" : "default"
-      );
+      const directory = path.join(root, hasStateDirectory ? "original" : "default");
       const original = new Portless(root, {
-        env: hasStateDirectory
-          ? { ...env, PORTLESS_STATE_DIR: directory }
-          : env,
+        env: hasStateDirectory ? { ...env, PORTLESS_STATE_DIR: directory } : env,
       });
       const claim = {
         hostname: "api.project.localhost",
@@ -66,14 +59,12 @@ if (name === "--remove") {
 
       await restore(original.getState(), root, changed).unpublish(claim);
 
-      await expect(
-        readFile(path.join(directory, "api.project"))
-      ).rejects.toMatchObject({
+      await expect(readFile(path.join(directory, "api.project"))).rejects.toMatchObject({
         code: "ENOENT",
       });
-      await expect(
-        readFile(path.join(root, "other", "api.project"), "utf-8")
-      ).resolves.toBe("43200");
+      await expect(readFile(path.join(root, "other", "api.project"), "utf-8")).resolves.toBe(
+        "43200"
+      );
     }
   );
 
@@ -81,20 +72,16 @@ if (name === "--remove") {
     const server = createServer((socket) => socket.end());
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
-    const { port } = z
-      .object({ port: z.number().int().positive() })
-      .parse(server.address());
+    const { port } = z.object({ port: z.number().int().positive() }).parse(server.address());
     const runner = vi.fn<(args: string[]) => Promise<string>>((args) =>
-      Promise.resolve(
-        args[0] === "get" ? `http://${args[1]}.localhost:${port}` : ""
-      )
+      Promise.resolve(args[0] === "get" ? `http://${args[1]}.localhost:${port}` : "")
     );
     try {
       const provider = new Portless(".", { runner });
       await provider.ensureReady();
-      await expect(
-        provider.getEndpointUrl("api.project.localhost")
-      ).resolves.toBe(`http://api.project.localhost:${port}`);
+      await expect(provider.getEndpointUrl("api.project.localhost")).resolves.toBe(
+        `http://api.project.localhost:${port}`
+      );
       await provider.publish({
         hostname: "api.project.localhost",
         owner: "test-session",
@@ -105,16 +92,10 @@ if (name === "--remove") {
         hostname: "api.project.localhost",
         owner: "test-session",
       });
-      expect(runner).toHaveBeenCalledWith([
-        "get",
-        "dev-provider-probe",
-        "--no-worktree",
-      ]);
+      expect(runner).toHaveBeenCalledWith(["get", "dev-provider-probe", "--no-worktree"]);
       expect(runner).toHaveBeenCalledWith(["alias", "api.project", "43100"]);
       expect(runner).toHaveBeenCalledWith(["alias", "--remove", "api.project"]);
-      expect(
-        runner.mock.calls.some(([args]) => args.includes("run"))
-      ).toBeFalsy();
+      expect(runner.mock.calls.some(([args]) => args.includes("run"))).toBeFalsy();
     } finally {
       await promisify(server.close.bind(server))();
     }
@@ -124,8 +105,8 @@ if (name === "--remove") {
     const provider = new Portless(".", {
       runner: () => Promise.resolve("https://rewritten.test"),
     });
-    await expect(
-      provider.getEndpointUrl("api.project.localhost")
-    ).rejects.toThrow("logical .localhost");
+    await expect(provider.getEndpointUrl("api.project.localhost")).rejects.toThrow(
+      "logical .localhost"
+    );
   });
 });

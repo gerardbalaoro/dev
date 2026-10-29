@@ -45,13 +45,15 @@
     "dev": "tsx src/cli.ts",
     "build": "tsdown",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "lint": "ultracite check",
-    "fix": "ultracite fix",
+    "typecheck": "oxlint --type-aware --type-check .",
+    "lint": "oxlint .",
+    "fix": "pnpm format && pnpm lint:fix",
     "format": "oxfmt --write .",
     "prepack": "pnpm build",
-    "check": "ultracite check",
-    "prepare": "lefthook install"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck",
+    "prepare": "lefthook install",
+    "lint:fix": "oxlint --fix .",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "@clack/prompts": "^1.8.1",
@@ -73,6 +75,7 @@
     "lefthook": "^2.1.14",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2005",
     "tsdown": "^0.23.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

@@ -23,11 +23,7 @@ export const SessionSchema = z
     workspace: z.string(),
   })
   .superRefine((session, context) => {
-    if (
-      !session.proxy &&
-      session.status === "running" &&
-      Object.keys(session.endpoints).length
-    ) {
+    if (!session.proxy && session.status === "running" && Object.keys(session.endpoints).length) {
       context.addIssue({
         code: "custom",
         message: "Routed sessions require proxy recovery state",

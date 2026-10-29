@@ -20,9 +20,7 @@ const ServersSchema = z.object({
     automatic_https: z.object({ disable: z.boolean().optional() }).optional(),
     listen: z.tuple([z.string()]),
     routes: z.array(z.record(z.string(), z.unknown())),
-    tls_connection_policies: z
-      .array(z.record(z.string(), z.unknown()))
-      .optional(),
+    tls_connection_policies: z.array(z.record(z.string(), z.unknown())).optional(),
   }),
 });
 
@@ -48,10 +46,7 @@ export class Caddy implements Provider {
     this.env = options.env ?? inherit();
 
     this.admin =
-      options.state?.data.admin ??
-      options.admin ??
-      this.env.CADDY_ADMIN ??
-      "http://127.0.0.1:2019";
+      options.state?.data.admin ?? options.admin ?? this.env.CADDY_ADMIN ?? "http://127.0.0.1:2019";
     this.server = options.state?.data.server;
     this.origin = options.state?.data.origin;
   }
@@ -71,9 +66,7 @@ export class Caddy implements Provider {
         Origin: new URL(this.admin).origin,
       },
       method,
-      signal: this.options.signal
-        ? AbortSignal.any([this.options.signal, timeout])
-        : timeout,
+      signal: this.options.signal ? AbortSignal.any([this.options.signal, timeout]) : timeout,
     };
     if (method !== "GET" && body !== undefined) {
       options.body = JSON.stringify(body);
@@ -83,9 +76,7 @@ export class Caddy implements Provider {
       return undefined;
     }
     if (!response.ok) {
-      throw new Error(
-        `Caddy ${method} ${location}: ${response.status} ${await response.text()}`
-      );
+      throw new Error(`Caddy ${method} ${location}: ${response.status} ${await response.text()}`);
     }
     const text = await response.text();
     return text ? z.json().parse(JSON.parse(text)) : undefined;
@@ -128,9 +119,7 @@ export class Caddy implements Provider {
       admin.protocol !== "http:" ||
       !["127.0.0.1", "localhost", "[::1]"].includes(admin.hostname)
     ) {
-      throw new Error(
-        `Cannot start Caddy for non-local admin address ${this.admin}`
-      );
+      throw new Error(`Cannot start Caddy for non-local admin address ${this.admin}`);
     }
     const config = path.join(directory, "caddy.json");
     await writeFile(
@@ -205,9 +194,7 @@ export class Caddy implements Provider {
         if (existing !== undefined && existing !== null) {
           return;
         }
-        const value = location.endsWith("/dev")
-          ? await this.createServer()
-          : {};
+        const value = location.endsWith("/dev") ? await this.createServer() : {};
         try {
           await this.request(location, "PUT", value);
         } catch (error) {
@@ -222,20 +209,10 @@ export class Caddy implements Provider {
   }
 
   async ensureReady(): Promise<void> {
-    if (
-      this.options.applicationPorts?.includes(
-        Number(new URL(this.admin).port || 80)
-      )
-    ) {
-      throw new Error(
-        "Caddy admin listener conflicts with an application port"
-      );
+    if (this.options.applicationPorts?.includes(Number(new URL(this.admin).port || 80))) {
+      throw new Error("Caddy admin listener conflicts with an application port");
     }
-    const directory = path.join(
-      Sessions.directory(this.env),
-      "proxy",
-      hash(this.admin)
-    );
+    const directory = path.join(Sessions.directory(this.env), "proxy", hash(this.admin));
     await mkdir(directory, { mode: 0o700, recursive: true });
     const release = await lockfile.lock(path.join(directory, "setup"), {
       realpath: false,
@@ -254,9 +231,7 @@ export class Caddy implements Provider {
   }
 
   private async readServer(): Promise<void> {
-    const servers = ServersSchema.safeParse(
-      await this.request("/config/apps/http/servers")
-    );
+    const servers = ServersSchema.safeParse(await this.request("/config/apps/http/servers"));
     // The dedicated dev server keeps routes ahead of unrelated catch-all handlers.
     if (!servers.success) {
       throw new Error(
@@ -266,8 +241,7 @@ export class Caddy implements Provider {
     }
     const server = servers.data.dev;
     const [address] = server.listen;
-    const match =
-      /^(?:(?:127\.0\.0\.1|localhost|\[::1\]))?:(?<port>\d+)$/u.exec(address);
+    const match = /^(?:(?:127\.0\.0\.1|localhost|\[::1\]))?:(?<port>\d+)$/u.exec(address);
     if (!match) {
       throw new Error("Caddy dev listener must use a local TCP port");
     }
@@ -298,9 +272,7 @@ export class Caddy implements Provider {
     return Promise.resolve(url.origin);
   }
 
-  private static getRouteId(
-    claim: Pick<RouteClaim, "hostname" | "owner">
-  ): string {
+  private static getRouteId(claim: Pick<RouteClaim, "hostname" | "owner">): string {
     return `dev-${hash(`${claim.owner}:${claim.hostname}`).slice(0, 24)}`;
   }
 
@@ -333,15 +305,8 @@ export class Caddy implements Provider {
     );
   }
 
-  async unpublish(
-    claim: Pick<RouteClaim, "hostname" | "owner">
-  ): Promise<void> {
-    await this.request(
-      `/id/${Caddy.getRouteId(claim)}`,
-      "DELETE",
-      undefined,
-      true
-    );
+  async unpublish(claim: Pick<RouteClaim, "hostname" | "owner">): Promise<void> {
+    await this.request(`/id/${Caddy.getRouteId(claim)}`, "DELETE", undefined, true);
   }
 
   getState(): CaddyState {

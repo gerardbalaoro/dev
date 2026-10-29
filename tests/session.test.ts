@@ -11,10 +11,7 @@ import { Workspaces } from "@/workspace/resolve";
 
 describe("session", () => {
   it("writes private state atomically and does not remove a different session", async () => {
-    const workspace = await Workspaces.resolve(
-      "project",
-      await createGitRepo()
-    );
+    const workspace = await Workspaces.resolve("project", await createGitRepo());
     const store = new Store(workspace, await createTempDir());
     const owner = await Identity.get(process.pid);
     const session: Session = {
@@ -66,10 +63,7 @@ describe("session", () => {
     { data: { PATH: "/unexpected" }, provider: "portless" },
     { data: {}, provider: "unknown" },
   ])("rejects malformed proxy recovery state before use: %j", async (proxy) => {
-    const workspace = await Workspaces.resolve(
-      "project",
-      await createGitRepo()
-    );
+    const workspace = await Workspaces.resolve("project", await createGitRepo());
     const store = new Store(workspace, await createTempDir());
     await store.prepare();
     const owner = await Identity.get(process.pid);

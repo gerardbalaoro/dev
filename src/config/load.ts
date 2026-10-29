@@ -8,24 +8,16 @@ import { merge } from "@/config/merge";
 import { ConfigSchema } from "@/config/schema";
 import type { Config, Extension } from "@/config/types";
 
-export async function load(
-  root: string,
-  extension: Extension = {}
-): Promise<Config> {
+export async function load(root: string, extension: Extension = {}): Promise<Config> {
   const packageConfig = await (async () => {
     try {
       const contents = await readFile(path.join(root, "package.json"), "utf-8");
       return (
-        z
-          .object({ dev: z.record(z.string(), z.unknown()).optional() })
-          .parse(JSON.parse(contents)).dev ?? {}
+        z.object({ dev: z.record(z.string(), z.unknown()).optional() }).parse(JSON.parse(contents))
+          .dev ?? {}
       );
     } catch (error) {
-      if (
-        error instanceof Error &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         return {};
       }
       throw error;

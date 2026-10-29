@@ -27,28 +27,19 @@ describe("cli", () => {
     async () => {
       const root = await createTempDir();
       const link = path.join(root, ".agents/skills/dev");
-      const installed = await invoke(
-        ["skills", "install", "--all", "--scope", "project"],
-        root
-      );
+      const installed = await invoke(["skills", "install", "--all", "--scope", "project"], root);
       await expect(realpath(link)).resolves.toBe(
         path.resolve(path.dirname(Cli), "../.crust/root/skills/dev")
       );
 
       await unlink(link);
       await symlink(path.join(root, "previous/skills/dev"), link, "dir");
-      const repaired = await invoke(
-        ["skills", "repair", "--scope", "project"],
-        root
-      );
+      const repaired = await invoke(["skills", "repair", "--scope", "project"], root);
       await expect(realpath(link)).resolves.toBe(
         path.resolve(path.dirname(Cli), "../.crust/root/skills/dev")
       );
 
-      const removed = await invoke(
-        ["skills", "uninstall", "--all", "--scope", "project"],
-        root
-      );
+      const removed = await invoke(["skills", "uninstall", "--all", "--scope", "project"], root);
       expect({
         installed: installed.exitCode,
         removed: removed.exitCode,

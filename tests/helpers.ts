@@ -15,9 +15,7 @@ export type FixtureValue =
 
 const temporary: string[] = [];
 afterEach(async () => {
-  await Promise.all(
-    temporary.splice(0).map((dir) => rm(dir, { force: true, recursive: true }))
-  );
+  await Promise.all(temporary.splice(0).map((dir) => rm(dir, { force: true, recursive: true })));
 });
 export async function createTempDir(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), "dev-test-"));
@@ -43,12 +41,6 @@ export async function createGitRepo(): Promise<string> {
   return root;
 }
 
-export async function writeConfig(
-  root: string,
-  config: FixtureValue
-): Promise<void> {
-  await writeFile(
-    path.join(root, "package.json"),
-    JSON.stringify({ dev: config })
-  );
+export async function writeConfig(root: string, config: FixtureValue): Promise<void> {
+  await writeFile(path.join(root, "package.json"), JSON.stringify({ dev: config }));
 }

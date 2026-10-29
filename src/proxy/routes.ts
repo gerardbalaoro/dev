@@ -30,15 +30,9 @@ export class Routes {
     try {
       const current = await (async (): Promise<HostnameClaim | undefined> => {
         try {
-          return HostnameClaimSchema.parse(
-            JSON.parse(await readFile(file, "utf-8"))
-          );
+          return HostnameClaimSchema.parse(JSON.parse(await readFile(file, "utf-8")));
         } catch (error) {
-          if (
-            error instanceof Error &&
-            "code" in error &&
-            error.code === "ENOENT"
-          ) {
+          if (error instanceof Error && "code" in error && error.code === "ENOENT") {
             return;
           }
           throw error;
@@ -55,10 +49,7 @@ export class Routes {
     current: HostnameClaim | undefined,
     claim: HostnameClaim
   ): Promise<void> {
-    if (
-      current &&
-      (current.owner !== claim.owner || current.root !== claim.root)
-    ) {
+    if (current && (current.owner !== claim.owner || current.root !== claim.root)) {
       throw new Error(
         `Hostname ${claim.hostname} is already claimed by ${current.root}. Stop that session before reusing the hostname.`
       );
@@ -78,9 +69,7 @@ export class Routes {
   }
 
   async reserve(claim: HostnameClaim): Promise<void> {
-    await this.withClaim(claim, (file, current) =>
-      Routes.claim(file, current, claim)
-    );
+    await this.withClaim(claim, (file, current) => Routes.claim(file, current, claim));
   }
 
   async publish(claim: RouteClaim, provider: Provider): Promise<void> {
@@ -92,11 +81,7 @@ export class Routes {
 
   async remove(claim: HostnameClaim, provider?: Provider): Promise<void> {
     await this.withClaim(claim, async (file, current) => {
-      if (
-        !current ||
-        current.owner !== claim.owner ||
-        current.root !== claim.root
-      ) {
+      if (!current || current.owner !== claim.owner || current.root !== claim.root) {
         return;
       }
       await provider?.unpublish(claim);

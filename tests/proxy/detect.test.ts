@@ -40,9 +40,7 @@ describe("proxy detection", () => {
   it("fails with actionable diagnostics without a provider", async () => {
     await expect(
       detect(".", {
-        providers: [
-          createProvider("test", { isAvailable: () => Promise.resolve(false) }),
-        ],
+        providers: [createProvider("test", { isAvailable: () => Promise.resolve(false) })],
       })
     ).rejects.toThrow("Install Portless");
   });

@@ -12,12 +12,7 @@ interface DetectOptions {
 
 export async function detect(
   cwd: string,
-  {
-    signal,
-    providers,
-    env = inherit(),
-    applicationPorts = [],
-  }: DetectOptions = {}
+  { signal, providers, env = inherit(), applicationPorts = [] }: DetectOptions = {}
 ): Promise<Provider> {
   const candidates = providers ?? [
     new Portless(cwd, { applicationPorts, env, signal }),
@@ -40,20 +35,14 @@ export async function detect(
       }
       failures.push(`${provider.id}: unavailable`);
     } catch (error) {
-      failures.push(
-        `${provider.id}: ${error instanceof Error ? error.message : String(error)}`
-      );
+      failures.push(`${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
     return select(index + 1);
   };
   return await select(0);
 }
 
-export function restore(
-  state: ProxyState,
-  cwd: string,
-  env?: Record<string, string>
-): Provider {
+export function restore(state: ProxyState, cwd: string, env?: Record<string, string>): Provider {
   if (state.provider === "portless") {
     return new Portless(cwd, { env, state });
   }

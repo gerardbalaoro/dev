@@ -15,11 +15,7 @@ import { Caddy } from "@/proxy/caddy";
 import { detect } from "@/proxy/detect";
 
 // node:http preserves the virtual Host header when connecting over loopback.
-async function readRoute(
-  port: string,
-  hostname: string,
-  pathname: string
-): Promise<string> {
+async function readRoute(port: string, hostname: string, pathname: string): Promise<string> {
   const request = get(`http://127.0.0.1:${port}${pathname}`, {
     agent: false,
     headers: { Host: hostname },
@@ -33,15 +29,11 @@ async function readRoute(
 }
 
 describe("caddy-live", () => {
-  it
-    .skipIf(!process.env.CADDY_TEST_BINARY)
-    .each(["configured", "empty", "no-apps", "unrelated"])(
+  it.skipIf(!process.env.CADDY_TEST_BINARY).each(["configured", "empty", "no-apps", "unrelated"])(
     "sets up and proxies traffic through a %s Caddy instance",
     async (configuration) => {
       const root = await createTempDir();
-      const upstream = createServer((req, res) =>
-        res.end(`upstream:${req.url}`)
-      );
+      const upstream = createServer((req, res) => res.end(`upstream:${req.url}`));
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       const adminPort = await getPort();
@@ -100,25 +92,18 @@ describe("caddy-live", () => {
         await provider.publish({
           hostname: "web.project.localhost",
           owner: "test-session",
-          port: z
-            .object({ port: z.number().int().positive() })
-            .parse(upstream.address()).port,
+          port: z.object({ port: z.number().int().positive() }).parse(upstream.address()).port,
           root: ".",
         });
-        const url = new URL(
-          await provider.getEndpointUrl("web.project.localhost")
-        );
+        const url = new URL(await provider.getEndpointUrl("web.project.localhost"));
         expect(url.hostname).toBe("web.project.localhost");
         expect(url.port).not.toBe("8080");
-        const servers = await fetch(
-          `http://127.0.0.1:${adminPort}/config/apps/http/servers`,
-          {
-            headers: {
-              Connection: "close",
-              Origin: `http://127.0.0.1:${adminPort}`,
-            },
-          }
-        );
+        const servers = await fetch(`http://127.0.0.1:${adminPort}/config/apps/http/servers`, {
+          headers: {
+            Connection: "close",
+            Origin: `http://127.0.0.1:${adminPort}`,
+          },
+        });
         const initialServer = ["empty", "no-apps"].includes(configuration)
           ? {}
           : {
@@ -127,9 +112,9 @@ describe("caddy-live", () => {
               },
             };
         await expect(servers.json()).resolves.toMatchObject(initialServer);
-        await expect(
-          readRoute(url.port, "web.project.localhost", "/test")
-        ).resolves.toBe("upstream:/test");
+        await expect(readRoute(url.port, "web.project.localhost", "/test")).resolves.toBe(
+          "upstream:/test"
+        );
         await provider.unpublish({
           hostname: "web.project.localhost",
           owner: "test-session",
@@ -159,10 +144,7 @@ describe("caddy-live", () => {
       const root = await createTempDir();
       const bin = path.join(root, "bin");
       await mkdir(bin);
-      await symlink(
-        z.string().parse(process.env.CADDY_TEST_BINARY),
-        path.join(bin, "caddy")
-      );
+      await symlink(z.string().parse(process.env.CADDY_TEST_BINARY), path.join(bin, "caddy"));
       await writeFile(path.join(bin, "portless"), "#!/bin/sh\nexit 1\n", {
         mode: 0o755,
       });
@@ -174,9 +156,7 @@ describe("caddy-live", () => {
         DEV_STATE_DIR: root,
         PATH: `${bin}:${process.env.PATH}`,
       };
-      const upstream = createServer((req, res) =>
-        res.end(`managed:${req.url}`)
-      );
+      const upstream = createServer((req, res) => res.end(`managed:${req.url}`));
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       try {
@@ -185,9 +165,7 @@ describe("caddy-live", () => {
           detect(root, { applicationPorts: [8080], env }),
         ]);
         expect(first.getState()).toStrictEqual(second.getState());
-        const { port } = z
-          .object({ port: z.number() })
-          .parse(upstream.address());
+        const { port } = z.object({ port: z.number() }).parse(upstream.address());
         await first.publish({
           hostname: "one.localhost",
           owner: "test-session",
@@ -202,16 +180,14 @@ describe("caddy-live", () => {
         });
         const url = new URL(await first.getEndpointUrl("one.localhost"));
         expect(url.port).not.toBe("8080");
-        await expect(
-          readRoute(url.port, "one.localhost", "/test")
-        ).resolves.toBe("managed:/test");
+        await expect(readRoute(url.port, "one.localhost", "/test")).resolves.toBe("managed:/test");
         await first.unpublish({
           hostname: "one.localhost",
           owner: "test-session",
         });
-        await expect(
-          readRoute(url.port, "two.localhost", "/other")
-        ).resolves.toBe("managed:/other");
+        await expect(readRoute(url.port, "two.localhost", "/other")).resolves.toBe(
+          "managed:/other"
+        );
         const next = await detect(root, { env });
         expect(next.getState()).toStrictEqual(first.getState());
         await second.unpublish({

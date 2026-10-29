@@ -86,12 +86,8 @@ async function getGroupMembers(group: number): Promise<number[]> {
   if (process.platform === "linux") {
     const processes = await readdir("/proc");
     const entries = processes.filter((entry) => /^\d+$/u.test(entry));
-    const members = await Promise.all(
-      entries.map((entry) => readLinuxProcess(Number(entry)))
-    );
-    return members.flatMap((entry) =>
-      entry?.group === group ? [entry.pid] : []
-    );
+    const members = await Promise.all(entries.map((entry) => readLinuxProcess(Number(entry))));
+    return members.flatMap((entry) => (entry?.group === group ? [entry.pid] : []));
   }
   const { stdout } = await execa("ps", ["-axo", "pid=,pgid=,stat="], {
     env: { LC_ALL: "C", TZ: "UTC" },
@@ -101,9 +97,7 @@ async function getGroupMembers(group: number): Promise<number[]> {
     .split("\n")
     .flatMap((line) => {
       const [pid, pgid, state] = line.trim().split(/\s+/u);
-      return Number(pgid) === group && !state?.startsWith("Z")
-        ? [Number(pid)]
-        : [];
+      return Number(pgid) === group && !state?.startsWith("Z") ? [Number(pid)] : [];
     });
 }
 
@@ -113,11 +107,9 @@ async function hasGroupToken(pid: number, token: string): Promise<boolean> {
       const env = await readFile(`/proc/${pid}/environ`, "utf-8");
       return env.split("\0").includes(`DEV_PROCESS_TOKEN=${token}`);
     }
-    const { stdout } = await execa(
-      "ps",
-      ["-Eww", "-p", String(pid), "-o", "command="],
-      { env: { LC_ALL: "C", TZ: "UTC" } }
-    );
+    const { stdout } = await execa("ps", ["-Eww", "-p", String(pid), "-o", "command="], {
+      env: { LC_ALL: "C", TZ: "UTC" },
+    });
     return stdout.split(/\s+/u).includes(`DEV_PROCESS_TOKEN=${token}`);
   } catch {
     // Exited or inaccessible members cannot prove ownership.
@@ -127,11 +119,7 @@ async function hasGroupToken(pid: number, token: string): Promise<boolean> {
 
 async function stop(identity: Identity): Promise<void> {
   const current = await get(identity.pid);
-  if (
-    current.startToken &&
-    identity.startToken &&
-    current.startToken !== identity.startToken
-  ) {
+  if (current.startToken && identity.startToken && current.startToken !== identity.startToken) {
     // The original group leader has been replaced; never signal the replacement.
     return;
   }
@@ -142,11 +130,9 @@ async function stop(identity: Identity): Promise<void> {
     if (!identity.startToken) {
       throw new Error(`Cannot verify process identity for PID ${identity.pid}`);
     }
-    const result = await execa(
-      "taskkill",
-      ["/pid", String(identity.pid), "/T", "/F"],
-      { reject: false }
-    );
+    const result = await execa("taskkill", ["/pid", String(identity.pid), "/T", "/F"], {
+      reject: false,
+    });
     if (result.exitCode && (await matches(identity))) {
       throw new Error(`Could not terminate process tree ${identity.pid}`);
     }
@@ -171,9 +157,7 @@ async function stop(identity: Identity): Promise<void> {
     try {
       process.kill(-identity.pid, signal);
     } catch (error) {
-      if (
-        !(error instanceof Error && "code" in error && error.code === "ESRCH")
-      ) {
+      if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) {
         throw error;
       }
     }
@@ -195,9 +179,7 @@ async function stop(identity: Identity): Promise<void> {
       return;
     }
     if (Date.now() >= deadline) {
-      throw new Error(
-        `Process group ${identity.pid} has not exited; retaining recovery state`
-      );
+      throw new Error(`Process group ${identity.pid} has not exited; retaining recovery state`);
     }
   }
 }

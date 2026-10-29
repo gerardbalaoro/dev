@@ -44,11 +44,7 @@ async function fixture(body: string, config = {}) {
         [
           ...(Entry.endsWith(".ts") ? ["--import", Tsx] : []),
           ...(isInline
-            ? [
-                "--input-type=module",
-                "--eval",
-                `await import(${JSON.stringify(script)})`,
-              ]
+            ? ["--input-type=module", "--eval", `await import(${JSON.stringify(script)})`]
             : [script]),
         ],
         {
@@ -66,11 +62,7 @@ describe("programmatic lifecycle", () => {
   it.each([
     { command: ["does-not-exist-dev-test"], error: "Unable to execute" },
     {
-      command: [
-        process.execPath,
-        "-e",
-        'process.stdout.write("€".repeat(400000))',
-      ],
+      command: [process.execPath, "-e", 'process.stdout.write("€".repeat(400000))'],
       error: "1 MiB",
     },
   ])(
@@ -138,9 +130,7 @@ fs.writeFileSync("stopped", "after command");
       );
       const result = await f.execute();
       expect(JSON.parse(result.stdout).code).toBe(0);
-      await expect(
-        readFile(path.join(f.root, "stopped"), "utf-8")
-      ).resolves.toBe("after command");
+      await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("after command");
     },
     25_000
   );
@@ -199,9 +189,7 @@ setInterval(() => {}, 1000);
         commands.push(
           ...(await Promise.all(
             ["first", "second"].map(async (name) => {
-              const pid = Number(
-                await readFile(path.join(f.root, `${name}.pid`), "utf-8")
-              );
+              const pid = Number(await readFile(path.join(f.root, `${name}.pid`), "utf-8"));
               return Identity.get(pid);
             })
           ))
@@ -228,15 +216,8 @@ setInterval(() => {}, 1000);
           });
           const failed = await stop();
           const retained = await store.read();
-          const shutdown = await readFile(
-            path.join(f.root, "stopped"),
-            "utf-8"
-          ).catch((error) => {
-            if (
-              error instanceof Error &&
-              "code" in error &&
-              error.code === "ENOENT"
-            ) {
+          const shutdown = await readFile(path.join(f.root, "stopped"), "utf-8").catch((error) => {
+            if (error instanceof Error && "code" in error && error.code === "ENOENT") {
               return;
             }
             throw error;
@@ -270,9 +251,7 @@ setInterval(() => {}, 1000);
           })
         );
         await expect(store.read()).resolves.toBeUndefined();
-        await expect(
-          readFile(path.join(f.root, "stopped"), "utf-8")
-        ).resolves.toBe("done\n");
+        await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("done\n");
       } finally {
         if (owner && (await Identity.matches(owner))) {
           process.kill(owner.pid, "SIGKILL");
@@ -310,9 +289,7 @@ try {
     expect(Number(result.first.port)).toBeGreaterThan(0);
     expect(result.first.copy).toBe(result.first.port);
     expect(result.second).toBe(result.first.port);
-    await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe(
-      "done\n"
-    );
+    await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("done\n");
   }, 25_000);
 
   it("returns callback values only after cleanup and supports command overrides", async () => {
@@ -341,9 +318,7 @@ catch (error) { console.log(error.message); }
 `);
     const output = await f.execute();
     expect(output.stdout).toBe("callback failed");
-    await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe(
-      "done\n"
-    );
+    await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("done\n");
   }, 25_000);
 
   it("waits for natural exit and cleanup without a callback", async () => {
@@ -384,9 +359,7 @@ try { await dev.start(); } catch(error) { console.log(error.message); }
     );
     const output = await f.execute();
     expect(output.stdout).toContain("Bootstrap hook exited 8");
-    await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe(
-      "done\n"
-    );
+    await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("done\n");
   }, 25_000);
 
   it("rejects exited when shutdown fails rather than reporting successful completion", async () => {

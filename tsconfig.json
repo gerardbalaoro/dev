@@ -13,14 +13,7 @@
       "@/*": ["./src/*"],
       "@tests/*": ["./tests/*"]
     },
-    "lib": [
-      "ES2023",
-      "ES2024.Promise",
-      "ESNext.Array",
-      "DOM",
-      "DOM.Iterable",
-      "ScriptHost"
-    ]
+    "lib": ["ES2023", "ES2024.Promise", "ESNext.Array", "DOM", "DOM.Iterable", "ScriptHost"]
   },
   "include": ["src", "tests", "*.config.ts"]
 }

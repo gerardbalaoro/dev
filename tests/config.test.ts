@@ -22,10 +22,7 @@ describe("configuration", () => {
   it("loads package.json and merges conventional config with c12 precedence", async () => {
     const root = await createTempDir();
     await writeConfig(root, { ...base, env: { ONE: "one", TWO: "old" } });
-    await writeFile(
-      path.join(root, "dev.config.ts"),
-      'export default { env: { TWO: "two" } }'
-    );
+    await writeFile(path.join(root, "dev.config.ts"), 'export default { env: { TWO: "two" } }');
     const config2 = await load(root);
     expect(config2.env).toStrictEqual({ ONE: "one", TWO: "two" });
   });
@@ -51,9 +48,9 @@ describe("configuration", () => {
       name: "project",
       run: "echo configured",
     });
-    await expect(
-      load(root, { env: { WEB_PORT: "unsafe" }, run: "true" })
-    ).rejects.toThrow("generated and cannot be overridden");
+    await expect(load(root, { env: { WEB_PORT: "unsafe" }, run: "true" })).rejects.toThrow(
+      "generated and cannot be overridden"
+    );
   });
 
   it.each([
@@ -88,8 +85,6 @@ describe("configuration", () => {
     { hooks: { unknown: "true" } },
     { endpoints: { api: { port: 1234 } } },
   ])("rejects invalid or conflicting fields: %j", (override) => {
-    expect(
-      ConfigSchema.safeParse({ ...base, ...override }).success
-    ).toBeFalsy();
+    expect(ConfigSchema.safeParse({ ...base, ...override }).success).toBeFalsy();
   });
 });

@@ -30,9 +30,9 @@ describe("caddy", () => {
       });
       await expect(provider.isAvailable()).resolves.toBeTruthy();
       await provider.ensureReady();
-      await expect(
-        provider.getEndpointUrl("api.project.localhost")
-      ).resolves.toBe("http://api.project.localhost:8080");
+      await expect(provider.getEndpointUrl("api.project.localhost")).resolves.toBe(
+        "http://api.project.localhost:8080"
+      );
       await provider.publish({
         hostname: "api.project.localhost",
         owner: "test-session",
@@ -63,9 +63,7 @@ describe("caddy", () => {
         hostname: "api.project.localhost",
         owner: "test-session",
       });
-      expect(fixture.routes).toMatchObject([
-        { match: [{ host: ["api.other.localhost"] }] },
-      ]);
+      expect(fixture.routes).toMatchObject([{ match: [{ host: ["api.other.localhost"] }] }]);
     } finally {
       vi.unstubAllEnvs();
       await fixture.close();
@@ -93,26 +91,21 @@ describe("caddy", () => {
       tls_connection_policies: [{}],
       want: "https://api.project.localhost:8443",
     },
-  ])(
-    "derives the URL from the server listener: $want",
-    async ({ want, ...server }) => {
-      const fixture = await createCaddy({
-        dev: { ...server, read_timeout: 5_000_000_000, routes: [] },
+  ])("derives the URL from the server listener: $want", async ({ want, ...server }) => {
+    const fixture = await createCaddy({
+      dev: { ...server, read_timeout: 5_000_000_000, routes: [] },
+    });
+    try {
+      const provider = new Caddy({
+        admin: fixture.admin,
+        env: { DEV_STATE_DIR: await createTempDir() },
       });
-      try {
-        const provider = new Caddy({
-          admin: fixture.admin,
-          env: { DEV_STATE_DIR: await createTempDir() },
-        });
-        await provider.ensureReady();
-        await expect(
-          provider.getEndpointUrl("api.project.localhost")
-        ).resolves.toBe(want);
-      } finally {
-        await fixture.close();
-      }
+      await provider.ensureReady();
+      await expect(provider.getEndpointUrl("api.project.localhost")).resolves.toBe(want);
+    } finally {
+      await fixture.close();
     }
-  );
+  });
 
   it.each([
     { automatic_https: { disable: "true" }, listen: [":8080"], routes: [] },
@@ -133,28 +126,25 @@ describe("caddy", () => {
     { automatic_https: { disable: true }, listen: [":65536"], routes: [] },
     { listen: [":8080"], routes: [] },
     null,
-  ])(
-    "rejects an incompatible dev server before publishing: %j",
-    async (server) => {
-      const fixture = await createCaddy({ dev: server });
-      try {
-        const provider = new Caddy({
-          admin: fixture.admin,
-          env: { DEV_STATE_DIR: await createTempDir() },
-        });
-        await expect(provider.ensureReady()).rejects.toThrow(/Caddy/u);
-        await expect(
-          provider.publish({
-            hostname: "api.project.localhost",
-            owner: "test-session",
-            port: 43_100,
-            root: ".",
-          })
-        ).rejects.toThrow("not ready");
-        expect(fixture.routes).toHaveLength(0);
-      } finally {
-        await fixture.close();
-      }
+  ])("rejects an incompatible dev server before publishing: %j", async (server) => {
+    const fixture = await createCaddy({ dev: server });
+    try {
+      const provider = new Caddy({
+        admin: fixture.admin,
+        env: { DEV_STATE_DIR: await createTempDir() },
+      });
+      await expect(provider.ensureReady()).rejects.toThrow(/Caddy/u);
+      await expect(
+        provider.publish({
+          hostname: "api.project.localhost",
+          owner: "test-session",
+          port: 43_100,
+          root: ".",
+        })
+      ).rejects.toThrow("not ready");
+      expect(fixture.routes).toHaveLength(0);
+    } finally {
+      await fixture.close();
     }
-  );
+  });
 });

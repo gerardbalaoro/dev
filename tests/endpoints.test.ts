@@ -30,9 +30,7 @@ describe("endpoints", () => {
     });
     await context.resolve({ BACKEND: `\${env('MY_API_URL')}` });
     expect(context.env.WEB_URL).toBe("https://project-12345678.localhost");
-    expect(context.env.BACKEND).toBe(
-      "https://my-api.project-12345678.localhost"
-    );
+    expect(context.env.BACKEND).toBe("https://my-api.project-12345678.localhost");
     expect(context.env.MY_API_PORT).toBe("43002");
   });
 
@@ -40,9 +38,9 @@ describe("endpoints", () => {
     "rejects invalid endpoint ports: %s",
     async (port) => {
       const context = new Resolver({}, await createTempDir());
-      await expect(
-        Endpoints.ports({ web: port }, "project", context)
-      ).rejects.toThrow("Invalid port for endpoint web");
+      await expect(Endpoints.ports({ web: port }, "project", context)).rejects.toThrow(
+        "Invalid port for endpoint web"
+      );
     }
   );
 });

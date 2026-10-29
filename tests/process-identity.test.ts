@@ -16,9 +16,7 @@ describe.skipIf(process.platform !== "linux")("Linux process identity", () => {
     async (code) => {
       const read = vi
         .spyOn(fs, "readFile")
-        .mockRejectedValueOnce(
-          Object.assign(new Error("Process disappeared"), { code })
-        );
+        .mockRejectedValueOnce(Object.assign(new Error("Process disappeared"), { code }));
       syncBuiltinESMExports();
       await expect(Identity.get(process.pid)).resolves.toStrictEqual({
         pid: process.pid,

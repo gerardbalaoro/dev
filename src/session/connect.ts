@@ -8,10 +8,7 @@ import type { Request, Response } from "@/session/protocol";
 
 export function connect(cwd: string, config: Extension): Promise<Running> {
   const isSource = import.meta.url.endsWith(".ts");
-  const worker = new URL(
-    isSource ? "../worker.ts" : "./worker.js",
-    import.meta.url
-  );
+  const worker = new URL(isSource ? "../worker.ts" : "./worker.js", import.meta.url);
   const child = fork(worker, [], {
     // The owner has its own entrypoint; caller eval/debug flags must not leak into it.
     execArgv: isSource ? ["--import", import.meta.resolve("tsx")] : [],
@@ -19,10 +16,7 @@ export function connect(cwd: string, config: Extension): Promise<Running> {
   });
   const ready = Promise.withResolvers<Running>();
   const completion = Promise.withResolvers<Result>();
-  const pending = new Map<
-    number,
-    ReturnType<typeof Promise.withResolvers<ProcessResult>>
-  >();
+  const pending = new Map<number, ReturnType<typeof Promise.withResolvers<ProcessResult>>>();
   let sequence = 0;
   let isFinished = false;
   let isStopping = false;
@@ -111,9 +105,7 @@ export function connect(cwd: string, config: Extension): Promise<Running> {
   child.once("close", (code, signal) => {
     if (!isFinished) {
       fail(
-        new Error(
-          `Session owner exited unexpectedly (${signal ?? code}): ${diagnostic.trim()}`
-        )
+        new Error(`Session owner exited unexpectedly (${signal ?? code}): ${diagnostic.trim()}`)
       );
     }
     for (const request of pending.values()) {

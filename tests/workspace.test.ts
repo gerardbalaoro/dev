@@ -15,15 +15,7 @@ describe("workspace", () => {
     const main = await Workspaces.resolve("project", path.join(root, "nested"));
     expect(main).toMatchObject({ isLinked: false, name: "project" });
     const worktree = path.join(await createTempDir(), "feature");
-    await execa("git", [
-      "-C",
-      root,
-      "worktree",
-      "add",
-      "-qb",
-      "feature",
-      worktree,
-    ]);
+    await execa("git", ["-C", root, "worktree", "add", "-qb", "feature", worktree]);
     const linked = await Workspaces.resolve("project", worktree);
     expect(linked).toMatchObject({
       isLinked: true,
@@ -42,21 +34,15 @@ describe("workspace", () => {
   });
 
   it("rejects non-Git directories", async () => {
-    await expect(
-      Workspaces.resolve("project", await createTempDir())
-    ).rejects.toThrow("Git working tree");
+    await expect(Workspaces.resolve("project", await createTempDir())).rejects.toThrow(
+      "Git working tree"
+    );
   });
 
   it("a main checkout with a separate Git directory remains the main checkout", async () => {
     const parent = await createTempDir();
     const root = path.join(parent, "repo");
-    await execa("git", [
-      "init",
-      "-q",
-      "--separate-git-dir",
-      path.join(parent, "metadata"),
-      root,
-    ]);
+    await execa("git", ["init", "-q", "--separate-git-dir", path.join(parent, "metadata"), root]);
     const workspace = await Workspaces.resolve("project", root);
     expect(workspace.name).toBe("project");
   });
@@ -64,10 +50,7 @@ describe("workspace", () => {
   it.each([
     { root: "/work/project/feature-a", want: "project-f86c5220" },
     { root: "/work/project/feature-b", want: "project-3c30cd5a" },
-  ])(
-    "derives a worktree name from its canonical root: $root",
-    ({ root, want }) => {
-      expect(label("project", root, true)).toBe(want);
-    }
-  );
+  ])("derives a worktree name from its canonical root: $root", ({ root, want }) => {
+    expect(label("project", root, true)).toBe(want);
+  });
 });

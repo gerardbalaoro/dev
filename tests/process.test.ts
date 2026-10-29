@@ -42,9 +42,7 @@ describe("process", () => {
   );
 
   it("refuses to identify a live process from a PID alone", async () => {
-    await expect(Identity.matches({ pid: process.pid })).rejects.toThrow(
-      "verify"
-    );
+    await expect(Identity.matches({ pid: process.pid })).rejects.toThrow("verify");
   });
 
   it.skipIf(process.platform !== "linux")(
@@ -52,25 +50,17 @@ describe("process", () => {
     async () => {
       const root = await createTempDir();
       const groupToken = randomUUID();
-      const leader = spawn(
-        "/bin/sh",
-        ["-c", "sleep 120 & echo $! > child.pid; wait"],
-        {
-          cwd: root,
-          detached: true,
-          env: { ...process.env, DEV_PROCESS_TOKEN: groupToken },
-          stdio: "ignore",
-        }
-      );
+      const leader = spawn("/bin/sh", ["-c", "sleep 120 & echo $! > child.pid; wait"], {
+        cwd: root,
+        detached: true,
+        env: { ...process.env, DEV_PROCESS_TOKEN: groupToken },
+        stdio: "ignore",
+      });
       assert.ok(leader.pid);
       const { pid } = leader;
       try {
-        await expect
-          .poll(() => readFile(path.join(root, "child.pid"), "utf-8"))
-          .toMatch(/^\d+/u);
-        const descendant = Number(
-          await readFile(path.join(root, "child.pid"), "utf-8")
-        );
+        await expect.poll(() => readFile(path.join(root, "child.pid"), "utf-8")).toMatch(/^\d+/u);
+        const descendant = Number(await readFile(path.join(root, "child.pid"), "utf-8"));
         const identity = { ...(await Identity.get(pid)), groupToken };
         const exited = once(leader, "exit");
         leader.kill("SIGKILL");
@@ -109,11 +99,7 @@ describe("process", () => {
 
   it("preserves multibyte output exactly at the capture limit", async () => {
     const result = await run(
-      [
-        process.execPath,
-        "-e",
-        'process.stdout.write("€".repeat(349525) + "x")',
-      ],
+      [process.execPath, "-e", 'process.stdout.write("€".repeat(349525) + "x")'],
       { cwd: await createTempDir(), env: inherit(), shouldCapture: true }
     );
     expect(result.code).toBe(0);
@@ -144,11 +130,9 @@ describe("process", () => {
 
   it("reports missing executables and does not start aborted commands", async () => {
     const options = { cwd: await createTempDir(), env: inherit() };
-    await expect(run(["does-not-exist-dev-test"], options)).rejects.toThrow(
-      "Unable to execute"
+    await expect(run(["does-not-exist-dev-test"], options)).rejects.toThrow("Unable to execute");
+    await expect(run("echo never", { ...options, signal: AbortSignal.abort() })).rejects.toThrow(
+      "aborted"
     );
-    await expect(
-      run("echo never", { ...options, signal: AbortSignal.abort() })
-    ).rejects.toThrow("aborted");
   });
 });

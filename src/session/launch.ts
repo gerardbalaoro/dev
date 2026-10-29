@@ -38,9 +38,7 @@ export async function launch(
   const config = await load(git.root, extension);
   const workspace = Workspaces.name(config.name, git);
   const controller = new AbortController();
-  const cancellation = signal
-    ? AbortSignal.any([signal, controller.signal])
-    : controller.signal;
+  const cancellation = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   const commands = new Set<Promise<ProcessResult>>();
   const errors: string[] = [];
   const output: UI = {
@@ -71,11 +69,9 @@ export async function launch(
     try {
       await cleanup();
     } catch (error) {
-      throw new AggregateError(
-        [primary, error],
-        "Session failed and cleanup failed",
-        { cause: error }
-      );
+      throw new AggregateError([primary, error], "Session failed and cleanup failed", {
+        cause: error,
+      });
     }
     throw primary;
   }
@@ -119,16 +115,10 @@ export async function launch(
       observer,
       signal: cancellation,
     });
-    const ports = await Endpoints.ports(
-      config.endpoints,
-      workspace.name,
-      resolver
-    );
+    const ports = await Endpoints.ports(config.endpoints, workspace.name, resolver);
     const proxy = Object.keys(ports).length
       ? await detect(workspace.root, {
-          applicationPorts: Object.values(ports).map(
-            (endpoint) => endpoint.port
-          ),
+          applicationPorts: Object.values(ports).map((endpoint) => endpoint.port),
           env: resolver.env,
           signal: cancellation,
         })

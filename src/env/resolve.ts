@@ -10,17 +10,13 @@ import { NameSchema, ServiceSchema, PortSchema } from "@/env/schema";
 import type { RunOptions } from "@/process/run";
 
 const ComposePortSchema = z.tuple([ServiceSchema, PortSchema]);
-const CommandSchema = z.tuple([
-  z.string().refine((script) => script.trim().length > 0),
-]);
+const CommandSchema = z.tuple([z.string().refine((script) => script.trim().length > 0)]);
 const EnvSchema = z.tuple([NameSchema]);
 const FreePortSchema = z.tuple([]);
 
 export function inherit(): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(process.env).filter(
-      (entry): entry is [string, string] => entry[1] !== undefined
-    )
+    Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)
   );
 }
 
@@ -38,11 +34,7 @@ export class Resolver {
   private readonly allocator: Allocator;
   readonly env: Record<string, string>;
   readonly resolved: Record<string, string> = Object.create(null);
-  constructor(
-    base: Record<string, string>,
-    cwd: string,
-    options: ResolverOptions = {}
-  ) {
+  constructor(base: Record<string, string>, cwd: string, options: ResolverOptions = {}) {
     this.options = options;
 
     this.cwd = cwd;
@@ -74,13 +66,7 @@ export class Resolver {
       },
       exec: (...args) => {
         const [script] = CommandSchema.parse(args);
-        return command(
-          script,
-          this.env,
-          this.cwd,
-          this.options.signal,
-          this.options.observer
-        );
+        return command(script, this.env, this.cwd, this.options.signal, this.options.observer);
       },
       port: async (...args) => {
         FreePortSchema.parse(args);
@@ -90,11 +76,8 @@ export class Resolver {
   }
 
   async resolve(values: Record<string, string>): Promise<void> {
-    await Array.fromAsync(
-      Object.entries(values),
-      async ([name, expression]) => {
-        this.set(name, await this.resolveValue(expression));
-      }
-    );
+    await Array.fromAsync(Object.entries(values), async ([name, expression]) => {
+      this.set(name, await this.resolveValue(expression));
+    });
   }
 }

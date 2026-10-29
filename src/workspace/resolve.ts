@@ -52,10 +52,7 @@ function name(project: string, checkout: GitWorkspace): Workspace {
   };
 }
 
-async function resolve(
-  project: string,
-  cwd = process.cwd()
-): Promise<Workspace> {
+async function resolve(project: string, cwd = process.cwd()): Promise<Workspace> {
   return name(project, await git(cwd));
 }
 

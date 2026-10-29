@@ -23,9 +23,7 @@ export async function acquire(store: Store): Promise<() => Promise<void>> {
       update: 1000,
     });
   } catch (error) {
-    if (
-      !(error instanceof Error && "code" in error && error.code === "ELOCKED")
-    ) {
+    if (!(error instanceof Error && "code" in error && error.code === "ELOCKED")) {
       throw error;
     }
     const session = await store.read();

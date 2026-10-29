@@ -37,23 +37,15 @@ export class Dev {
   }
 
   start(command?: string): Promise<Running> {
-    return connect(
-      this.cwd,
-      structuredClone(merge(this.config, { run: command }))
-    );
+    return connect(this.cwd, structuredClone(merge(this.config, { run: command })));
   }
 
   run(command?: string): Promise<Result>;
   run<T>(action: Callback<T>): Promise<T>;
   run<T>(command: string, action: Callback<T>): Promise<T>;
-  async run<T>(
-    command?: string | Callback<T>,
-    action?: Callback<T>
-  ): Promise<Result | T> {
+  async run<T>(command?: string | Callback<T>, action?: Callback<T>): Promise<Result | T> {
     const workflow = typeof command === "function" ? command : action;
-    const session = await this.start(
-      typeof command === "string" ? command : undefined
-    );
+    const session = await this.start(typeof command === "string" ? command : undefined);
     if (!workflow) {
       return session.exited;
     }
@@ -67,11 +59,9 @@ export class Dev {
         if (error === primary) {
           throw error;
         }
-        throw new AggregateError(
-          [primary, error],
-          "Callback failed and cleanup failed",
-          { cause: error }
-        );
+        throw new AggregateError([primary, error], "Callback failed and cleanup failed", {
+          cause: error,
+        });
       }
       throw primary;
     }

@@ -45,9 +45,7 @@ async function receive(message: Request): Promise<void> {
       });
     } catch (error) {
       send({
-        error: failure(
-          error instanceof Error ? error : new Error(String(error))
-        ),
+        error: failure(error instanceof Error ? error : new Error(String(error))),
         id: message.id,
         type: "failure",
       });

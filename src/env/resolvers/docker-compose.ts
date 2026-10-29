@@ -22,22 +22,11 @@ export async function published(
 ): Promise<string> {
   const timeout = AbortSignal.timeout(15_000);
   const result = await run(
-    [
-      "docker",
-      "compose",
-      "ps",
-      "--format",
-      "json",
-      "--status",
-      "running",
-      service,
-    ],
+    ["docker", "compose", "ps", "--format", "json", "--status", "running", service],
     {
       ...options,
       shouldCapture: true,
-      signal: options.signal
-        ? AbortSignal.any([options.signal, timeout])
-        : timeout,
+      signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
     }
   );
   if (result.code !== 0) {
@@ -50,9 +39,7 @@ export async function published(
     .trim()
     .split("\n")
     .filter(Boolean)
-    .flatMap(
-      (line) => ContainerSchema.parse(JSON.parse(line)).Publishers ?? []
-    );
+    .flatMap((line) => ContainerSchema.parse(JSON.parse(line)).Publishers ?? []);
   const ports = new Set(
     publishers
       .filter(

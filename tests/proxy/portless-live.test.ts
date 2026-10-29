@@ -42,24 +42,20 @@ describe("portless-live", () => {
         }
         return result.stdout.trim();
       };
-      const upstream = createServer((_req, res) =>
-        res.end("portless-upstream")
-      );
+      const upstream = createServer((_req, res) => res.end("portless-upstream"));
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       const provider = new Portless(root, { runner });
       try {
         await expect(provider.isAvailable()).resolves.toBeTruthy();
         await provider.ensureReady();
-        await expect(
-          provider.getEndpointUrl("api.project.localhost")
-        ).resolves.toBe(`http://api.project.localhost:${port}`);
+        await expect(provider.getEndpointUrl("api.project.localhost")).resolves.toBe(
+          `http://api.project.localhost:${port}`
+        );
         await provider.publish({
           hostname: "api.project.localhost",
           owner: "test-session",
-          port: z
-            .object({ port: z.number().int().positive() })
-            .parse(upstream.address()).port,
+          port: z.object({ port: z.number().int().positive() }).parse(upstream.address()).port,
           root: ".",
         });
         const fetchUpstream = async () => {
@@ -78,9 +74,7 @@ describe("portless-live", () => {
             : `HTTP ${response.statusCode}`;
         };
         // Portless debounces its shared route-file watcher.
-        await expect
-          .poll(fetchUpstream, { interval: 50, timeout: 2000 })
-          .toBe("portless-upstream");
+        await expect.poll(fetchUpstream, { interval: 50, timeout: 2000 }).toBe("portless-upstream");
         await provider.unpublish({
           hostname: "api.project.localhost",
           owner: "test-session",
