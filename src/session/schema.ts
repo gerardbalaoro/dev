@@ -30,6 +30,7 @@ export const SessionSchema = z
         path: ["proxy"],
       });
     }
+
     for (const claim of session.pendingRoutes) {
       if (claim.owner !== session.id || claim.root !== session.root) {
         context.addIssue({

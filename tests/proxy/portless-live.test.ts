@@ -17,6 +17,7 @@ describe("portless-live", () => {
     async () => {
       const root = await createTempDir();
       const port = await getPort();
+
       const env = {
         ...inherit(),
         NO_COLOR: "1",
@@ -27,6 +28,7 @@ describe("portless-live", () => {
         PORTLESS_SYNC_HOSTS: "0",
         PORTLESS_TLD: "localhost",
       };
+
       const runner = async (args: string[]) => {
         const result = await run(
           [z.string().min(1).parse(process.env.PORTLESS_TEST_BINARY), ...args],
@@ -37,17 +39,22 @@ describe("portless-live", () => {
             signal: AbortSignal.timeout(15_000),
           }
         );
+
         if (result.code) {
           throw new Error(result.stderr || result.stdout);
         }
+
         return result.stdout.trim();
       };
+
       const upstream = createServer((_req, res) => {
         res.end("portless-upstream");
       });
+
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       const provider = new Portless(root, { runner });
+
       try {
         await expect(provider.isAvailable()).resolves.toBeTruthy();
         await provider.ensureReady();
@@ -60,18 +67,23 @@ describe("portless-live", () => {
           port: z.object({ port: z.number().int().positive() }).parse(upstream.address()).port,
           root: ".",
         });
+
         const fetchUpstream = async () => {
           // node:http preserves the virtual Host header when connecting over loopback.
           const request = get(`http://127.0.0.1:${port}`, {
             agent: false,
             headers: { Host: "api.project.localhost" },
           });
+
           const [response] = z
             .tuple([z.instanceof(IncomingMessage)])
             .parse(await once(request, "response"));
+
           const body = await text(response);
+
           return response.statusCode === 200 ? body : `HTTP ${response.statusCode}`;
         };
+
         // Portless debounces its shared route-file watcher.
         await expect.poll(fetchUpstream, { interval: 50, timeout: 2000 }).toBe("portless-upstream");
         await provider.unpublish({

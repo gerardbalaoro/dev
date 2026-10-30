@@ -33,22 +33,27 @@ if (name === "--remove") {
 `,
         { mode: 0o700 }
       );
+
       const env = {
         ...Object.fromEntries(
           Object.entries(inherit()).filter(([key]) => !key.startsWith("PORTLESS_"))
         ),
         PATH: `${root}${path.delimiter}${process.env.PATH ?? ""}`,
       };
+
       const directory = path.join(root, hasStateDirectory ? "original" : "default");
+
       const original = new Portless(root, {
         env: hasStateDirectory ? { ...env, PORTLESS_STATE_DIR: directory } : env,
       });
+
       const claim = {
         hostname: "api.project.localhost",
         owner: "test-session",
         port: 43_100,
         root,
       };
+
       await original.publish(claim);
       const changed = { ...env, PORTLESS_STATE_DIR: path.join(root, "other") };
       await new Portless(root, { env: changed }).publish({
@@ -71,13 +76,16 @@ if (name === "--remove") {
     const server = createServer((socket) => {
       socket.end();
     });
+
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const { port } = z.object({ port: z.number().int().positive() }).parse(server.address());
+
     const runner = vi.fn<(args: string[]) => Promise<string>>(
       async (args) =>
         await Promise.resolve(args[0] === "get" ? `http://${args[1]}.localhost:${port}` : "")
     );
+
     try {
       const provider = new Portless(".", { runner });
       await provider.ensureReady();
@@ -107,6 +115,7 @@ if (name === "--remove") {
     const provider = new Portless(".", {
       runner: async () => await Promise.resolve("https://rewritten.test"),
     });
+
     await expect(provider.getEndpointUrl("api.project.localhost")).rejects.toThrow(
       "logical .localhost"
     );

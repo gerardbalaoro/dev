@@ -55,9 +55,11 @@ describe("cli", () => {
       const result = await invoke(args, await createTempDir());
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("dev <command>");
+
       for (const command of ["start", "stop", "status", "exec", "skills"]) {
         expect(result.stdout).toContain(command);
       }
+
       expect(result.stdout).toContain("https://github.com/gerardbalaoro/dev");
       expect(result.stderr).toBe("");
     }

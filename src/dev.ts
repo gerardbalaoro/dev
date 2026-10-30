@@ -33,6 +33,7 @@ export class Dev {
 
   extend(config: Extension): this {
     this.config = structuredClone(merge(this.config, config));
+
     return this;
   }
 
@@ -46,10 +47,13 @@ export class Dev {
   async run<T>(command?: string | Callback<T>, action?: Callback<T>): Promise<Result | T> {
     const workflow = typeof command === "function" ? command : action;
     const session = await this.start(typeof command === "string" ? command : undefined);
+
     if (!workflow) {
       return await session.exited;
     }
+
     let result: T;
+
     try {
       result = await workflow(session);
     } catch (primary) {
@@ -59,13 +63,17 @@ export class Dev {
         if (error === primary) {
           throw error;
         }
+
         throw new AggregateError([primary, error], "Callback failed and cleanup failed", {
           cause: error,
         });
       }
+
       throw primary;
     }
+
     await session.stop();
+
     return result;
   }
 }

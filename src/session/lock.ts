@@ -12,9 +12,11 @@ export function running(workspace: string, pid?: number): Error {
 export async function acquire(store: Store): Promise<() => Promise<void>> {
   await store.prepare();
   const active = await store.read();
+
   if (active && (await Sessions.alive(active))) {
     throw running(active.workspace, active.pid);
   }
+
   try {
     return await lockfile.lock(store.lockTarget, {
       realpath: false,
@@ -26,6 +28,7 @@ export async function acquire(store: Store): Promise<() => Promise<void>> {
     if (!(error instanceof Error && "code" in error && error.code === "ELOCKED")) {
       throw error;
     }
+
     const session = await store.read();
     throw running(session?.workspace ?? store.workspace.root, session?.pid);
   }

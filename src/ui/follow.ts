@@ -14,9 +14,11 @@ export class Tail {
     const parts = (this.pending + stripVTControlCharacters(chunk).replaceAll("\r", "\n")).split(
       "\n"
     );
+
     this.pending = (parts.pop() ?? "").slice(-4000);
     const completed = parts.map((line) => line.slice(-4000));
     this.lines = [...this.lines, ...completed].slice(-this.capacity);
+
     return completed;
   }
 

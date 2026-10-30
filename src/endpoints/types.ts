@@ -7,5 +7,7 @@ export const EndpointSchema = z.object({
 });
 
 export type Endpoint = z.infer<typeof EndpointSchema>;
+
 export type Endpoints = Record<string, Endpoint>;
+
 export type EndpointPorts = Record<string, Omit<Endpoint, "url">>;

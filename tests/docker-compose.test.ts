@@ -47,6 +47,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
 `,
       { mode: 0o755 }
     );
+
     const env = {
       ...inherit(),
       COMPOSE_PROJECT_NAME: "project-worktree",
@@ -54,6 +55,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
       PATH: `${root}${path.delimiter}${process.env.PATH}`,
       WORKSPACE_NAME: "project-worktree",
     };
+
     return { env, root };
   }
 
@@ -64,6 +66,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
         ...container,
         Publishers: addresses.map((URL) => ({ ...publisher, URL })),
       });
+
       const { root, env } = await createDocker(output);
       const context = new Resolver(env, root);
       await context.resolve(
@@ -95,6 +98,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
         Service: "mail-pit",
       })
     );
+
     const context = new Resolver(env, root);
     await expect(
       context.resolveValue(`http://localhost:${docker.port("mail-pit", 8025)}/inbox`)
@@ -155,6 +159,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
         )
         .join("\n")
     );
+
     const context = new Resolver(env, root);
     await expect(context.resolveValue(`\${docker.compose.port('postgres', 5432)}`)).resolves.toBe(
       "49152"
@@ -228,16 +233,20 @@ else if (process.env.DOCKER_TEST_FAIL) {
   it("can cancel a stuck Docker command through normal process supervision", async () => {
     const { root, env } = await createDocker();
     const controller = new AbortController();
+
     const context = new Resolver({ ...env, DOCKER_TEST_HANG: "1" }, root, {
       signal: controller.signal,
     });
+
     const lookup = context.resolveValue(`\${docker.compose.port('postgres', 5432)}`);
+
     const cancel = (async () => {
       try {
         await expect
           .poll(async () => {
             try {
               await readFile(path.join(root, "docker-call.json"));
+
               return true;
             } catch {
               return false;
@@ -248,6 +257,7 @@ else if (process.env.DOCKER_TEST_FAIL) {
         controller.abort();
       }
     })();
+
     await Promise.all([
       expect(lookup).rejects.toThrow("Docker Compose port lookup failed"),
       cancel,

@@ -33,6 +33,7 @@ describe("process", () => {
       }));
     `,
       ]);
+
       expect(JSON.parse(stdout)).toStrictEqual({
         hasToken: true,
         matchesSelf: true,
@@ -50,15 +51,18 @@ describe("process", () => {
     async () => {
       const root = await createTempDir();
       const groupToken = randomUUID();
+
       const leader = spawn("/bin/sh", ["-c", "sleep 120 & echo $! > child.pid; wait"], {
         cwd: root,
         detached: true,
         env: { ...process.env, DEV_PROCESS_TOKEN: groupToken },
         stdio: "ignore",
       });
+
       assert.notEqual(leader.pid, 0);
       assert.ok(leader.pid !== undefined);
       const { pid } = leader;
+
       try {
         await expect
           .poll(async () => await readFile(path.join(root, "child.pid"), "utf-8"))
@@ -72,6 +76,7 @@ describe("process", () => {
         await expect
           .poll(async () => {
             const current = await Identity.get(descendant);
+
             return current.startToken;
           })
           .toBeUndefined();
@@ -105,6 +110,7 @@ describe("process", () => {
       [process.execPath, "-e", 'process.stdout.write("€".repeat(349525) + "x")'],
       { cwd: await createTempDir(), env: inherit(), shouldCapture: true }
     );
+
     expect(result.code).toBe(0);
     expect(result.stdout).toBe(`${"€".repeat(349_525)}x`);
     expect(result.stderr).toBe("");
@@ -113,6 +119,7 @@ describe("process", () => {
   it("terminates descendants that retain stdout after the shell exits", async () => {
     const output: string[] = [];
     const before = Date.now();
+
     const result = await run("sleep 60 & printf done; exit 4", {
       cwd: await createTempDir(),
       env: inherit(),
@@ -120,6 +127,7 @@ describe("process", () => {
         output.push(chunk);
       },
     });
+
     expect(result.code).toBe(4);
     expect(output.join("")).toBe("done");
     expect(Date.now() - before).toBeLessThan(5000);
@@ -130,6 +138,7 @@ describe("process", () => {
       cwd: await createTempDir(),
       env: inherit(),
     });
+
     expect(result.code).toBe(137);
   });
 

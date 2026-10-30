@@ -21,12 +21,14 @@ export class Routes {
   ): Promise<void> {
     await mkdir(this.directory, { mode: 0o700, recursive: true });
     const file = path.join(this.directory, `${hash(claim.hostname)}.json`);
+
     const release = await lockfile.lock(file, {
       realpath: false,
       retries: { factor: 1, maxTimeout: 1000, minTimeout: 1000, retries: 7 },
       stale: 5000,
       update: 1000,
     });
+
     try {
       const current = await (async (): Promise<HostnameClaim | undefined> => {
         try {
@@ -35,9 +37,11 @@ export class Routes {
           if (error instanceof Error && "code" in error && error.code === "ENOENT") {
             return undefined;
           }
+
           throw error;
         }
       })();
+
       await action(file, current);
     } finally {
       await release();
@@ -54,8 +58,10 @@ export class Routes {
         `Hostname ${claim.hostname} is already claimed by ${current.root}. Stop that session before reusing the hostname.`
       );
     }
+
     if (!current) {
       const temporary = `${file}.${randomUUID()}.tmp`;
+
       try {
         await writeFile(temporary, JSON.stringify(claim), {
           flag: "wx",
@@ -86,6 +92,7 @@ export class Routes {
       if (!current || current.owner !== claim.owner || current.root !== claim.root) {
         return;
       }
+
       await provider?.unpublish(claim);
       await rm(file);
     });

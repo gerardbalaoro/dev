@@ -31,13 +31,16 @@ function send(message: Response): void {
 async function receive(message: Request): Promise<void> {
   if (message.type === "stop") {
     controller.abort();
+
     return;
   }
+
   if (message.type === "exec") {
     try {
       if (!session) {
         throw new Error("The session is not running");
       }
+
       send({
         id: message.id,
         result: await session.exec(message.command),
@@ -50,12 +53,16 @@ async function receive(message: Request): Promise<void> {
         type: "failure",
       });
     }
+
     return;
   }
+
   if (isStarted) {
     return;
   }
+
   isStarted = true;
+
   try {
     session = await launch(
       message.cwd,
@@ -83,6 +90,7 @@ async function receive(message: Request): Promise<void> {
     });
   } finally {
     signals.dispose();
+
     if (process.connected) {
       process.disconnect?.();
     }
@@ -92,8 +100,10 @@ async function receive(message: Request): Promise<void> {
 process.on("message", (message: Request) => {
   void receive(message);
 });
+
 process.once("disconnect", () => {
   controller.abort();
+
   if (!isStarted) {
     signals.dispose();
   }

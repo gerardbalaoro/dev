@@ -31,6 +31,7 @@ export class Execution {
     ui: UI
   ): Promise<{ exited: Promise<number> }> {
     const ready = Promise.withResolvers<boolean>();
+
     const exited = foreground(
       command,
       options,
@@ -41,10 +42,12 @@ export class Execution {
           ready.resolve(true);
         })
     );
+
     void exited.catch(() => {
       // The caller observes the original rejection after startup.
     });
     await Promise.race([ready.promise, exited]);
+
     return { exited };
   }
 
@@ -62,10 +65,13 @@ export class Execution {
     if (this.signal.aborted) {
       throw new Error("The session has stopped");
     }
+
     if (!isConcurrent && this.serial) {
       throw new Error("A managed process is already active in this session");
     }
+
     const observer = isConcurrent ? this.journal.observeCommand() : this.journal.observe();
+
     const task = run(command, {
       ...options,
       ...observer,
@@ -75,14 +81,18 @@ export class Execution {
       },
       signal: options.signal ? AbortSignal.any([this.signal, options.signal]) : this.signal,
     });
+
     this.pending.add(task);
+
     if (!isConcurrent) {
       this.serial = task;
     }
+
     try {
       return await task;
     } finally {
       this.pending.delete(task);
+
       if (!isConcurrent) {
         this.serial = undefined;
       }

@@ -42,11 +42,14 @@ export async function launch(
   let journal: Journal | undefined;
   let execution: Execution | undefined;
   let closing: Promise<void> | undefined;
+
   function cleanup(): Promise<void> {
     closing ??= (async () => {
       await execution?.stop();
+
       try {
         const failure = await journal?.cleanup(ui);
+
         if (failure) {
           throw failure;
         }
@@ -54,8 +57,10 @@ export async function launch(
         await release?.();
       }
     })();
+
     return closing;
   }
+
   async function rollback(primary: Error): Promise<never> {
     try {
       await cleanup();
@@ -64,18 +69,23 @@ export async function launch(
         cause: error,
       });
     }
+
     throw primary;
   }
+
   try {
     release = await acquire(store);
     signal?.throwIfAborted();
     const existing = await store.read();
+
     if (existing) {
       if (await Sessions.alive(existing)) {
         throw running(existing.workspace, existing.pid);
       }
+
       ui.info("Cleaning up the previous session");
       const failure = await new Journal(existing, store).cleanup(ui);
+
       if (failure) {
         throw new AggregateError(
           failure.errors,
@@ -83,11 +93,13 @@ export async function launch(
         );
       }
     }
+
     const base = {
       ...inherit(),
       COMPOSE_PROJECT_NAME: workspace.name,
       WORKSPACE_NAME: workspace.name,
     };
+
     const active = await Journal.create(workspace, store);
     journal = active;
     const processes = new Execution(active, signal);
@@ -95,6 +107,7 @@ export async function launch(
     const cancellation = processes.signal;
     await journal.reserve(config.endpoints, config.hooks.shutdown);
     ui.start(workspace.name);
+
     if (config.hooks.bootstrap !== undefined && config.hooks.bootstrap !== "") {
       const code = await foreground(
         config.hooks.bootstrap,
@@ -103,15 +116,19 @@ export async function launch(
         true,
         processes.run
       );
+
       if (code) {
         throw new Error(`Bootstrap hook exited ${code}`);
       }
     }
+
     const resolver = new Resolver(base, workspace.root, {
       execute: processes.run,
       signal: cancellation,
     });
+
     const ports = await Endpoints.ports(config.endpoints, workspace.name, resolver);
+
     const proxy = Object.keys(ports).length
       ? await detect(workspace.root, {
           applicationPorts: Object.values(ports).map((endpoint) => endpoint.port),
@@ -119,11 +136,13 @@ export async function launch(
           signal: cancellation,
         })
       : undefined;
+
     const endpoints = proxy ? await Endpoints.urls(ports, proxy, resolver) : {};
     await resolver.resolve(config.env);
     await journal.prepare(endpoints, resolver.resolved, proxy);
     await journal.activate(proxy, cancellation);
     ui.showEndpoints(endpoints);
+
     const application = await processes.start(
       config.run,
       {
@@ -132,14 +151,18 @@ export async function launch(
       },
       ui
     );
+
     const exited = application.exited.then(async (code) => {
       await cleanup();
+
       return { code };
     }, rollback);
+
     // A session may fail before its caller starts observing completion.
     void exited.catch(() => {
       // The original promise remains rejected for the caller to observe.
     });
+
     return {
       endpoints,
       env: { ...base, ...resolver.resolved },
@@ -152,6 +175,7 @@ export async function launch(
       exited,
       stop() {
         void processes.stop();
+
         return exited;
       },
       workspace,
@@ -160,6 +184,7 @@ export async function launch(
     if (closing) {
       throw error;
     }
+
     return await rollback(error instanceof Error ? error : new Error(String(error)));
   }
 }

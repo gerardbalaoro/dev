@@ -10,6 +10,7 @@ export async function foreground(
   execute: Executor = run
 ): Promise<number> {
   const output = ui.output(command, isHook ? 8 : 12);
+
   try {
     const result = await execute(command, {
       ...options,
@@ -17,7 +18,9 @@ export async function foreground(
         output.write(chunk);
       },
     });
+
     output.finish(result.code);
+
     return result.code;
   } catch (error) {
     output.finish(1);

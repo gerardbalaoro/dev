@@ -34,9 +34,11 @@ export class Journal {
 
   static async create(workspace: Workspace, store: Store): Promise<Journal> {
     const owner = await Identity.get(process.pid);
+
     if (!(owner.startToken ?? "")) {
       throw new Error("Cannot establish the session owner's process identity");
     }
+
     const session: Session = {
       endpoints: {},
       env: {
@@ -53,7 +55,9 @@ export class Journal {
       version: 1,
       workspace: workspace.name,
     };
+
     await store.write(session);
+
     return new Journal(session, store);
   }
 
@@ -62,6 +66,7 @@ export class Journal {
     const completion = Promise.withResolvers<null>();
     this.writing = completion.promise;
     await previous;
+
     try {
       const validated = SessionSchema.parse(update(this.state));
       await this.store.write(validated);
@@ -77,6 +82,7 @@ export class Journal {
       owner: this.state.id,
       root: this.state.root,
     }));
+
     await this.commit((state) => ({ ...state, pendingRoutes }));
     await Array.fromAsync(pendingRoutes, async (claim) => {
       await this.routes.reserve(claim);
@@ -94,6 +100,7 @@ export class Journal {
         if (this.state.process) {
           throw new Error("A managed process is already active in this session");
         }
+
         const identity = await Identity.get(pid);
         await this.commit((state) => ({
           ...state,
@@ -105,6 +112,7 @@ export class Journal {
 
   observeCommand(): Pick<RunOptions, "onSpawn" | "onSettled"> {
     let token: string | undefined;
+
     return {
       onSettled: async () => {
         if (token !== undefined && token !== "") {
@@ -133,9 +141,11 @@ export class Journal {
     if (this.state.status !== "starting") {
       throw new Error("Only a starting session can prepare routes");
     }
+
     if (Object.keys(endpoints).length && !provider) {
       throw new Error("Endpoints require a prepared proxy");
     }
+
     await this.commit((state) => ({
       ...state,
       endpoints,
@@ -149,17 +159,22 @@ export class Journal {
     if (this.state.status !== "starting" || !this.isPrepared) {
       throw new Error("Only a prepared starting session can be activated");
     }
+
     await Array.fromAsync(this.state.pendingRoutes, async (claim) => {
       signal.throwIfAborted();
+
       if (!provider) {
         throw new Error("Endpoints require a prepared proxy");
       }
+
       const endpoint = Object.values(this.state.endpoints).find(
         (entry) => entry.hostname === claim.hostname
       );
+
       if (!endpoint) {
         throw new Error(`No resolved endpoint for ${claim.hostname}`);
       }
+
       await this.routes.publish({ ...claim, port: endpoint.port }, provider);
     });
     signal.throwIfAborted();
@@ -168,28 +183,35 @@ export class Journal {
 
   async cleanup(ui: UI): Promise<AggregateError | undefined> {
     const errors: Error[] = [];
+
     const failure = () =>
       new AggregateError(
         errors,
         errors.map((error) => `Cleanup failed: ${error.message}`).join("\n")
       );
+
     const attempt = async (action: () => Promise<void>): Promise<boolean> => {
       try {
         await action();
+
         return true;
       } catch (error) {
         const cause = error instanceof Error ? error : new Error(String(error));
         errors.push(cause);
         ui.error(`Cleanup failed: ${cause.message}`);
+
         return false;
       }
     };
+
     if (
       !(await attempt(async () => {
         const owner = await Identity.get(process.pid);
+
         if (!(owner.startToken ?? "")) {
           throw new Error("Cannot establish the cleanup owner's process identity");
         }
+
         await this.commit((state) => ({
           ...state,
           ownerStartToken: owner.startToken,
@@ -202,12 +224,14 @@ export class Journal {
     }
 
     const tracked = this.state.process;
+
     if (tracked) {
       await attempt(async () => {
         await Identity.stop(tracked);
         await this.commit((state) => ({ ...state, process: undefined }));
       });
     }
+
     await Array.fromAsync(this.state.commands ?? [], async (command) => {
       await attempt(async () => {
         await Identity.stop(command);
@@ -217,9 +241,11 @@ export class Journal {
         }));
       });
     });
+
     if ((this.state.commands?.length ?? 0) > 0) {
       return failure();
     }
+
     {
       const provider = this.state.proxy
         ? restore(this.state.proxy, this.state.root, {
@@ -227,6 +253,7 @@ export class Journal {
             ...this.state.env,
           })
         : undefined;
+
       await Array.fromAsync(this.state.pendingRoutes, async (claim) => {
         await attempt(async () => {
           await this.routes.remove(claim, provider);
@@ -239,11 +266,14 @@ export class Journal {
         });
       });
     }
+
     const { shutdown } = this.state;
+
     if (shutdown !== undefined && shutdown !== "" && !this.state.process) {
       await attempt(async () => {
         // Shutdown must still run after live session execution has stopped.
         const execution = new Execution(this, AbortSignal.timeout(30_000));
+
         const code = await foreground(
           shutdown,
           {
@@ -254,12 +284,15 @@ export class Journal {
           true,
           execution.run
         );
+
         if (code) {
           throw new Error(`Shutdown hook exited ${code}`);
         }
+
         await this.commit((state) => ({ ...state, shutdown: undefined }));
       });
     }
+
     if (
       errors.length === 0 &&
       !this.state.process &&
@@ -270,6 +303,7 @@ export class Journal {
         await this.store.remove(this.state.id);
       });
     }
+
     return errors.length ? failure() : undefined;
   }
 }

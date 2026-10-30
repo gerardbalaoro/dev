@@ -21,9 +21,11 @@ export type Response =
 
 export function failure(error: Error): Failure {
   const result: Failure = { message: error.message };
+
   if (error instanceof AggregateError) {
     result.errors = error.errors.map(failure);
   }
+
   return result;
 }
 

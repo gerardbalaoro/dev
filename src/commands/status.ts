@@ -8,6 +8,7 @@ async function status(cwd = process.cwd(), ui: UI = UI): Promise<number> {
   const { git, store } = await context(cwd);
   const session = await store.read();
   ui.start(session?.workspace ?? git.root);
+
   if (!session || !(await Sessions.alive(session))) {
     ui.info(
       session
@@ -18,6 +19,7 @@ async function status(cwd = process.cwd(), ui: UI = UI): Promise<number> {
     ui.info(`Status  ${session.status}\nPID     ${session.pid}`);
     ui.showEndpoints(session.endpoints);
   }
+
   return 0;
 }
 

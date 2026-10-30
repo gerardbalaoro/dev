@@ -58,6 +58,7 @@ export class Caddy implements Provider {
     canBeMissing = false
   ): Promise<JSONType | undefined> {
     const timeout = AbortSignal.timeout(3000);
+
     const options: RequestInit = {
       headers: {
         // Config updates can restart the admin listener and close idle sockets.
@@ -68,26 +69,34 @@ export class Caddy implements Provider {
       method,
       signal: this.options.signal ? AbortSignal.any([this.options.signal, timeout]) : timeout,
     };
+
     if (method !== "GET" && body !== undefined) {
       options.body = JSON.stringify(body);
     }
+
     const response = await fetch(`${this.admin}${location}`, options);
+
     if (canBeMissing && response.status === 404) {
       return undefined;
     }
+
     if (!response.ok) {
       throw new Error(`Caddy ${method} ${location}: ${response.status} ${await response.text()}`);
     }
+
     const text = await response.text();
+
     return text ? z.json().parse(JSON.parse(text)) : undefined;
   }
 
   private async isRunning(): Promise<boolean> {
     try {
       await this.request("/config/");
+
       return true;
     } catch {
       this.options.signal?.throwIfAborted();
+
       return false;
     }
   }
@@ -96,6 +105,7 @@ export class Caddy implements Provider {
     if (await this.isRunning()) {
       return true;
     }
+
     try {
       const result = await run(["caddy", "version"], {
         cwd: process.cwd(),
@@ -106,21 +116,25 @@ export class Caddy implements Provider {
           AbortSignal.timeout(3000),
         ]),
       });
+
       return result.code === 0;
     } catch {
       this.options.signal?.throwIfAborted();
+
       return false;
     }
   }
 
   private async start(directory: string): Promise<void> {
     const admin = new URL(this.admin);
+
     if (
       admin.protocol !== "http:" ||
       !["127.0.0.1", "localhost", "[::1]"].includes(admin.hostname)
     ) {
       throw new Error(`Cannot start Caddy for non-local admin address ${this.admin}`);
     }
+
     const config = path.join(directory, "caddy.json");
     await writeFile(
       config,
@@ -134,29 +148,37 @@ export class Caddy implements Provider {
     );
     const logfile = path.join(directory, "caddy.log");
     const log = await open(logfile, "a", 0o600);
+
     const child = spawn("caddy", ["run", "--config", config], {
       cwd: directory,
       detached: true,
       env: this.env,
       stdio: ["ignore", log.fd, log.fd],
     });
+
     try {
       await once(child, "spawn");
+
       for await (const deadline of interval(50, Date.now() + 5000, {
         signal: this.options.signal,
       })) {
         if (Date.now() >= deadline) {
           break;
         }
+
         this.options.signal?.throwIfAborted();
+
         if (child.exitCode !== null || child.signalCode !== null) {
           break;
         }
+
         if (await this.isRunning()) {
           child.unref();
+
           return;
         }
       }
+
       const output = await readFile(logfile, "utf-8");
       throw new Error(`Caddy did not start: ${output.slice(-4096)}`);
     } catch (error) {
@@ -173,6 +195,7 @@ export class Caddy implements Provider {
       host: "127.0.0.1",
       port: 8080,
     });
+
     return {
       automatic_https: { disable: true },
       listen: [`127.0.0.1:${port}`],
@@ -191,15 +214,19 @@ export class Caddy implements Provider {
       ],
       async (location) => {
         const existing = await this.request(location, "GET", undefined, true);
+
         if (existing !== undefined && existing !== null) {
           return;
         }
+
         const value = location.endsWith("/dev") ? await this.createServer() : {};
+
         try {
           await this.request(location, "PUT", value);
         } catch (error) {
           // Another process may have created this object since our read.
           const current = await this.request(location, "GET", undefined, true);
+
           if (current === undefined || current === null) {
             throw error;
           }
@@ -212,17 +239,22 @@ export class Caddy implements Provider {
     if (this.options.applicationPorts?.includes(Number(new URL(this.admin).port || 80)) === true) {
       throw new Error("Caddy admin listener conflicts with an application port");
     }
+
     const directory = path.join(Sessions.directory(this.env), "proxy", hash(this.admin));
     await mkdir(directory, { mode: 0o700, recursive: true });
+
     const release = await lockfile.lock(path.join(directory, "setup"), {
       realpath: false,
       retries: { factor: 1, maxTimeout: 100, minTimeout: 100, retries: 100 },
     });
+
     try {
       this.options.signal?.throwIfAborted();
+
       if (!(await this.isRunning())) {
         await this.start(directory);
       }
+
       await this.setup();
       await this.readServer();
     } finally {
@@ -232,6 +264,7 @@ export class Caddy implements Provider {
 
   private async readServer(): Promise<void> {
     const servers = ServersSchema.safeParse(await this.request("/config/apps/http/servers"));
+
     // The dedicated dev server keeps routes ahead of unrelated catch-all handlers.
     if (!servers.success) {
       throw new Error(
@@ -239,25 +272,33 @@ export class Caddy implements Provider {
         { cause: servers.error }
       );
     }
+
     const server = servers.data.dev;
     const [address] = server.listen;
     const match = /^(?:(?:127\.0\.0\.1|localhost|\[::1\]))?:(?<port>\d+)$/u.exec(address);
+
     if (!match) {
       throw new Error("Caddy dev listener must use a local TCP port");
     }
+
     const port = Number(match.groups?.port);
+
     if (this.options.applicationPorts?.includes(port) === true) {
       throw new Error(`Caddy listener conflicts with application port ${port}`);
     }
+
     if (port < 1 || port > 65_535) {
       throw new Error("Invalid Caddy listener port");
     }
+
     const hasTls = (server.tls_connection_policies?.length ?? 0) > 0;
+
     if (!hasTls && server.automatic_https?.disable !== true) {
       throw new Error(
         "Caddy HTTP dev server must disable automatic_https, or configure TLS policies"
       );
     }
+
     this.server = "dev";
     const protocol = hasTls ? "https" : "http";
     this.origin = new URL(`${protocol}://localhost:${port}`).origin;
@@ -267,8 +308,10 @@ export class Caddy implements Provider {
     if (this.origin === undefined || this.origin === "") {
       return await Promise.reject(new Error("Caddy is not ready"));
     }
+
     const url = new URL(this.origin);
     url.hostname = hostname;
+
     return await Promise.resolve(url.origin);
   }
 
@@ -280,8 +323,10 @@ export class Caddy implements Provider {
     if (this.server === undefined || this.server === "") {
       throw new Error("Caddy is not ready");
     }
+
     const { hostname, port } = claim;
     const id = Caddy.getRouteId(claim);
+
     const route = {
       "@id": id,
       handle: [
@@ -293,12 +338,16 @@ export class Caddy implements Provider {
       match: [{ host: [hostname] }],
       terminal: true,
     };
+
     const existing = await this.request(`/id/${id}`, "GET", undefined, true);
     const hasRoute = Boolean(existing);
+
     if (hasRoute) {
       await this.request(`/id/${id}`, "PATCH", route);
+
       return;
     }
+
     await this.request(
       `/config/apps/http/servers/${encodeURIComponent(this.server)}/routes/0`,
       "PUT",
@@ -319,6 +368,7 @@ export class Caddy implements Provider {
     ) {
       throw new Error("Caddy is not ready");
     }
+
     return {
       data: {
         admin: this.admin,

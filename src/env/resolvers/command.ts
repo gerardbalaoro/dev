@@ -10,8 +10,10 @@ export async function command(
     ...options,
     shouldCapture: true,
   });
+
   if (result.code !== 0) {
     throw new Error(`Command expression failed (exit ${result.code}): ${script}\n${result.stderr}`);
   }
+
   return result.stdout.trim();
 }

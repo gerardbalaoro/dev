@@ -8,6 +8,7 @@ import { load } from "@/config/load";
 import { ConfigSchema } from "@/config/schema";
 
 const base = { name: "project", run: "echo hello" };
+
 describe("configuration", () => {
   it("does not inherit commands from a package outside the workspace", async () => {
     const parent = await createTempDir();
@@ -35,12 +36,14 @@ describe("configuration", () => {
       hooks: { bootstrap: "old", shutdown: "keep" },
       name: "project",
     });
+
     const config = await load(root, {
       endpoints: { web: "5000" },
       env: { MODE: "new" },
       hooks: { bootstrap: "new" },
       run: "echo configured",
     });
+
     expect(config).toStrictEqual({
       endpoints: { api: "4001", web: "5000" },
       env: { BASE: "base", MODE: "new" },

@@ -6,15 +6,18 @@ import { UI } from "@/ui/index";
 
 async function start(cwd = process.cwd(), ui: UI = UI): Promise<number> {
   const signals = watch();
+
   try {
     const session = await launch(cwd, {}, ui, signals.signal);
     ui.info("Session running. Press Ctrl+C to stop and clean up.");
     const result = await session.exited;
+
     return signals.getExitCode() || result.code;
   } catch (error) {
     if (!signals.signal.aborted) {
       ui.error(error instanceof Error ? error.message : String(error));
     }
+
     return signals.getExitCode() || 1;
   } finally {
     signals.dispose();

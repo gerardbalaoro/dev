@@ -17,6 +17,7 @@ describe.skipIf(process.platform !== "linux")("Linux process identity", () => {
       const read = vi
         .spyOn(fs, "readFile")
         .mockRejectedValueOnce(Object.assign(new Error("Process disappeared"), { code }));
+
       syncBuiltinESMExports();
       await expect(Identity.get(process.pid)).resolves.toStrictEqual({
         pid: process.pid,
@@ -29,6 +30,7 @@ describe.skipIf(process.platform !== "linux")("Linux process identity", () => {
     const error = Object.assign(new Error("Permission denied"), {
       code: "EACCES",
     });
+
     vi.spyOn(fs, "readFile").mockRejectedValueOnce(error);
     syncBuiltinESMExports();
     await expect(Identity.get(process.pid)).rejects.toBe(error);

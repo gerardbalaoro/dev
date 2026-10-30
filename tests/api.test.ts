@@ -35,10 +35,12 @@ async function fixture(body: string, config = {}) {
     script,
     `import { dev, Dev, port, env, docker, Sessions, Workspaces } from ${JSON.stringify(Entry)};\n${body}`
   );
+
   const env = {
     DEV_STATE_DIR: state,
     TSX_TSCONFIG_PATH: path.resolve("tsconfig.json"),
   };
+
   return {
     env,
     execute: (isInline = false) =>
@@ -80,10 +82,13 @@ await dev.run(async session => {
   console.log(JSON.stringify({ failure, next }));
 });
 `);
+
       const result = await f.execute();
+
       const output = z
         .object({ failure: z.string(), next: z.json() })
         .parse(JSON.parse(result.stdout));
+
       expect(output.failure).toContain(error);
       expect(output.next).toStrictEqual({
         code: 0,
@@ -107,6 +112,7 @@ if (${JSON.stringify(ending)} === "stop") await session.stop();
 else { writeFileSync("exit", ""); await session.exited; }
 console.log(JSON.stringify(await task));
 `);
+
       await writeFile(
         path.join(f.root, "command.cjs"),
         `
@@ -159,6 +165,7 @@ console.log(JSON.stringify((await results).map(result => ({
   status: result.status, message: result.reason?.message,
 }))));
 `);
+
       await writeFile(
         path.join(f.root, "command.cjs"),
         `
@@ -172,6 +179,7 @@ setInterval(() => {}, 1000);
       const commands: Identity[] = [];
       let owner: Identity | undefined;
       let main: Identity | undefined;
+
       const stop = async () =>
         await execa(process.execPath, [...CliArgs, "stop"], {
           cwd: f.root,
@@ -179,6 +187,7 @@ setInterval(() => {}, 1000);
           reject: false,
           timeout: 15_000,
         });
+
       try {
         await expect
           .poll(async () => await readFile(path.join(f.root, "ready"), "utf-8"), {
@@ -186,34 +195,44 @@ setInterval(() => {}, 1000);
           })
           .toBe("");
         const state = await store.read();
+
         if (!state) {
           throw new Error("Missing session state");
         }
+
         owner = { pid: state.pid, startToken: state.ownerStartToken };
         main = state.process;
         commands.push(
           ...(await Promise.all(
             ["first", "second"].map(async (name) => {
               const pid = Number(await readFile(path.join(f.root, `${name}.pid`), "utf-8"));
+
               return await Identity.get(pid);
             })
           ))
         );
         const [first] = commands;
+
         if (!first) {
           throw new Error("Missing command identity");
         }
+
         process.kill(owner.pid, "SIGKILL");
         const output = await execution;
+
         const results = z
           .array(z.object({ message: z.string(), status: z.string() }))
           .parse(JSON.parse(output.stdout));
+
         expect(results).toHaveLength(3);
+
         for (const result of results) {
           expect(result.status).toBe("rejected");
           expect(result.message).toContain("Session owner exited unexpectedly");
         }
+
         const attempts = [];
+
         if (needsRetry) {
           await store.write({
             ...state,
@@ -223,6 +242,7 @@ setInterval(() => {}, 1000);
           });
           const failed = await stop();
           const retained = await store.read();
+
           const shutdown = await (async (): Promise<string | undefined> => {
             try {
               return await readFile(path.join(f.root, "stopped"), "utf-8");
@@ -230,19 +250,24 @@ setInterval(() => {}, 1000);
               if (error instanceof Error && "code" in error && error.code === "ENOENT") {
                 return undefined;
               }
+
               throw error;
             }
           })();
+
           attempts.push({
             code: failed.exitCode,
             commands: retained?.commands,
             shutdown,
           });
+
           if (!retained) {
             throw new Error("Recovery state was removed after failed cleanup");
           }
+
           await store.write({ ...retained, commands: [first] });
         }
+
         expect(attempts).toStrictEqual(
           needsRetry
             ? [
@@ -267,14 +292,17 @@ setInterval(() => {}, 1000);
         if (owner && (await Identity.matches(owner))) {
           process.kill(owner.pid, "SIGKILL");
         }
+
         await Promise.all(
           commands.map(async (command) => {
             await Identity.stop(command);
           })
         );
+
         if (main) {
           await Identity.stop(main);
         }
+
         execution.kill("SIGKILL");
         await completion;
       }
@@ -295,7 +323,9 @@ try {
 `,
       { env: { BASE: "inherited", KEEP: "old" } }
     );
+
     const output = await f.execute();
+
     const result = z
       .object({
         first: z.record(z.string(), z.string()),
@@ -303,6 +333,7 @@ try {
         workspace: z.string(),
       })
       .parse(JSON.parse(output.stdout));
+
     expect(result).toMatchObject({
       first: { base: "inherited", keep: "override" },
       workspace: "project",
@@ -325,6 +356,7 @@ console.log(JSON.stringify({ result, stopped: await readFile("stopped", "utf-8")
 `,
       { run: "exit 99" }
     );
+
     const output = await f.execute();
     expect(JSON.parse(output.stdout)).toStrictEqual({
       result: "callback",
@@ -337,6 +369,7 @@ console.log(JSON.stringify({ result, stopped: await readFile("stopped", "utf-8")
 try { await dev.run(async () => { throw new Error("callback failed"); }); }
 catch (error) { console.log(error.message); }
 `);
+
     const output = await f.execute();
     expect(output.stdout).toBe("callback failed");
     await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("done\n");
@@ -348,6 +381,7 @@ const result = await dev.run("exit 7");
 const { readFile } = await import("node:fs/promises");
 console.log(JSON.stringify({ code: result.code, stopped: await readFile("stopped", "utf-8") }));
 `);
+
     const output = await f.execute();
     expect(JSON.parse(output.stdout)).toStrictEqual({
       code: 7,
@@ -364,6 +398,7 @@ await promisify(execFile)(process.execPath, ${JSON.stringify([...CliArgs, "stop"
 const result = await session.exited;
 console.log(JSON.stringify({ code: result.code, survived: true }));
 `);
+
     const output = await f.execute();
     expect(JSON.parse(output.stdout)).toStrictEqual({
       code: 143,
@@ -378,6 +413,7 @@ try { await dev.start(); } catch(error) { console.log(error.message); }
 `,
       { hooks: { bootstrap: "exit 8", shutdown: "node shutdown.cjs" } }
     );
+
     const output = await f.execute();
     expect(output.stdout).toContain("Bootstrap hook exited 8");
     await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("done\n");
@@ -391,6 +427,7 @@ try { await session.exited; } catch(error) { console.log(error.message); }
 `,
       { hooks: { shutdown: "exit 4" } }
     );
+
     const output = await f.execute();
     expect(output.stdout).toContain("Cleanup failed");
   }, 25_000);
@@ -408,6 +445,7 @@ catch (error) {
 `,
       { hooks: { shutdown: "exit 4" } }
     );
+
     const output = await f.execute();
     const errors = z.array(z.unknown()).parse(JSON.parse(output.stdout));
     expect(errors[0]).toStrictEqual({ message: "callback failed" });
@@ -431,6 +469,7 @@ catch (error) {
 `,
       { hooks: { shutdown: "exit 4" }, run: "exit 0" }
     );
+
     await f.execute();
     const retried = await f.execute();
     const expectedMessage: unknown = expect.stringContaining("Stale session cleanup failed");
@@ -452,6 +491,7 @@ const result = await task;
 try { await session.exec([process.execPath, "-e", 'require("node:fs").writeFileSync("unexpected", "spawned")']); }
 catch(error) { console.log(JSON.stringify({ code: result.code, error: error.message })); }
 `);
+
     const output = await f.execute();
     expect(JSON.parse(output.stdout)).toStrictEqual({
       code: 143,
@@ -481,10 +521,13 @@ try {
   console.log(JSON.stringify({ tracked, results: (await completed).map(result => result.code) }));
 } finally { await session.stop(); }
 `);
+
     const output = await f.execute();
+
     const result = z
       .object({ results: z.array(z.number()), tracked: z.array(z.number()) })
       .parse(JSON.parse(output.stdout));
+
     expect(result.tracked).toHaveLength(2);
     expect(new Set(result.tracked).size).toBe(2);
     expect(result.results).toStrictEqual([143, 143]);
@@ -496,6 +539,7 @@ try {
 await dev.start();
 process.exit(0);
 `);
+
     await f.execute();
     await expect
       .poll(async () => await readFile(path.join(f.root, "stopped"), "utf-8"), {
@@ -514,6 +558,7 @@ const original = await first.run();
 const second = await new Dev().name("second").run("exit 5");
 console.log(JSON.stringify([override.code, original.code, second.code]));
 `);
+
     const output = await f.execute();
     expect(JSON.parse(output.stdout)).toStrictEqual([7, 3, 5]);
   }, 25_000);

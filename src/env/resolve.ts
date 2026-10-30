@@ -52,9 +52,11 @@ export class Resolver {
 
   async resolveValue(expression: string): Promise<string> {
     this.options.signal?.throwIfAborted();
+
     return await interpolate(expression, {
       "docker.compose.port": async (...args) => {
         const [service, port] = ComposePortSchema.parse(args);
+
         return await published(
           service,
           port,
@@ -64,10 +66,12 @@ export class Resolver {
       },
       env: (...args) => {
         const [name] = EnvSchema.parse(args);
+
         return read(name, this.env);
       },
       exec: async (...args) => {
         const [script] = CommandSchema.parse(args);
+
         return await command(
           script,
           { cwd: this.cwd, env: this.env, signal: this.options.signal },
@@ -76,6 +80,7 @@ export class Resolver {
       },
       port: async (...args) => {
         FreePortSchema.parse(args);
+
         return String(await this.allocator.allocate());
       },
     });

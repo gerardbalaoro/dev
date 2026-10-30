@@ -21,14 +21,17 @@ async function waitUntil(check: () => Promise<boolean>, diagnostic = () => "", t
   if (await check()) {
     return;
   }
+
   for await (const deadline of interval(50, Date.now() + timeout)) {
     if (Date.now() >= deadline) {
       break;
     }
+
     if (await check()) {
       return;
     }
   }
+
   throw new Error(`Timed out: ${diagnostic()}`);
 }
 
@@ -43,18 +46,21 @@ describe("lifecycle", () => {
         child.kill("SIGTERM");
       }
     }
+
     await Promise.all(
       cleanups.splice(0).map(async (fn) => {
         await fn();
       })
     );
   });
+
   function launch(root: string, env: NodeJS.ProcessEnv, args: string[]) {
     const child = spawn(process.execPath, ["--import", tsx, cli, ...args], {
       cwd: root,
       env,
       stdio: ["ignore", "pipe", "pipe"],
     });
+
     children.push(child);
     let output = "";
     child.stdout.on("data", (chunk) => {
@@ -63,10 +69,13 @@ describe("lifecycle", () => {
     child.stderr.on("data", (chunk) => {
       output += chunk;
     });
+
     const done = (async () => {
       await once(child, "close");
+
       return { code: child.exitCode, output };
     })();
+
     return { child, done, output: () => output };
   }
 
@@ -83,6 +92,7 @@ describe("lifecycle", () => {
     });
     const proxy = await createCaddy();
     cleanups.push(proxy.close);
+
     const env = {
       ...process.env,
       CADDY_ADMIN: proxy.admin,
@@ -91,6 +101,7 @@ describe("lifecycle", () => {
       PATH: `${bin}:${process.env.PATH}`,
       TSX_TSCONFIG_PATH: path.resolve("tsconfig.json"),
     };
+
     await writeFile(
       path.join(root, "hook.cjs"),
       `const { appendFileSync } = require("node:fs");
@@ -123,6 +134,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       ...extra,
     });
     const store = new Store(await Workspaces.resolve("project", root), state);
+
     return { env, proxy, root, state, store };
   }
 
@@ -131,6 +143,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const session = await f.store.read();
+
       return session?.status === "running";
     }, owner.output);
     const session = await f.store.read();
@@ -138,6 +151,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     await waitUntil(async () => {
       try {
         const response = await fetch(`http://127.0.0.1:${session.env.WEB_PORT}`);
+
         return response.ok;
       } catch {
         return false;
@@ -170,6 +184,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
           "--",
           "-x",
         ]).done;
+
         expect({
           code: executed.code,
           env: z.json().parse(JSON.parse(executed.output)),
@@ -192,6 +207,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const current = await f.store.read();
+
       return current?.status === "running";
     }, owner.output);
     const session = await f.store.read();
@@ -210,10 +226,12 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       stopCode: 0,
     });
     const contents = await readFile(path.join(f.root, "hooks.jsonl"), "utf-8");
+
     const hooks = contents
       .trim()
       .split("\n")
       .map((line) => z.record(z.string(), z.string()).parse(JSON.parse(line)));
+
     expect(hooks).toStrictEqual([
       { compose: "project", stage: "bootstrap", workspace: "project" },
       {
@@ -244,6 +262,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const owner = launch(first.root, first.env, ["start"]);
     await waitUntil(async () => {
       const current = await first.store.read();
+
       return current?.status === "running";
     }, owner.output);
     const route = structuredClone(first.proxy.routes);
@@ -265,11 +284,13 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       hooks: {},
       run: "printf worker-output",
     });
+
     const result = await launch(
       fixture.root,
       { ...fixture.env, CADDY_ADMIN: "http://127.0.0.1:1" },
       ["start"]
     ).done;
+
     const expectedOutput: unknown = expect.stringContaining("worker-output");
     expect(result).toMatchObject({
       code: 0,
@@ -283,6 +304,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const f = await createFixture({
       hooks: { bootstrap: "exit 8", shutdown: "node hook.cjs shutdown" },
     });
+
     const result = await launch(f.root, f.env, ["start"]).done;
     expect(result.code).toBe(1);
     expect(result.output).toContain("Bootstrap hook exited 8");
@@ -323,10 +345,12 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       session: await f.store.read(),
     }).toStrictEqual({ code: 0, routes: [], session: undefined });
     const contents = await readFile(path.join(f.root, "hooks.jsonl"), "utf-8");
+
     const hooks = contents
       .trim()
       .split("\n")
       .map((line) => z.record(z.string(), z.string()).parse(JSON.parse(line)));
+
     expect(hooks.filter((hook) => hook.stage === "shutdown")).toHaveLength(1);
   });
 
@@ -348,9 +372,11 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         shutdown: "node hook.cjs shutdown",
       },
     });
+
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const session = await f.store.read();
+
       return session?.status === "starting";
     }, owner.output);
     const stopped = await launch(f.root, f.env, ["stop"]).done;
@@ -368,6 +394,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const session = await f.store.read();
+
       return session?.status === "running";
     }, owner.output);
     owner.child.kill("SIGINT");
@@ -387,6 +414,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       const owner = launch(f.root, f.env, ["start"]);
       await waitUntil(async () => {
         const state = await f.store.read();
+
         return state?.status === "running";
       }, owner.output);
       owner.child.kill(signal);
@@ -422,6 +450,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       async () => {
         const session = await f.store.read();
         const resolved = await otherStore.read();
+
         return session?.status === "running" && resolved?.status === "running";
       },
       () => main.output() + other.output()
@@ -448,6 +477,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       const owner = launch(f.root, f.env, ["start"]);
       await waitUntil(async () => {
         const s = await f.store.read();
+
         return s?.status === "running" && !!s.process;
       }, owner.output);
       const old = await f.store.read();
@@ -455,6 +485,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       await waitUntil(async () => {
         try {
           const response = await fetch(`http://127.0.0.1:${old.env.WEB_PORT}`);
+
           return response.ok;
         } catch {
           return false;
@@ -462,15 +493,18 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       });
       owner.child.kill("SIGKILL");
       await owner.done;
+
       if (hasMissingLeader) {
         assert.ok(old.process);
         const leader = old.process.pid;
         process.kill(leader, "SIGKILL");
         await waitUntil(async () => {
           const identity = await Identity.get(leader);
+
           return !(identity.startToken ?? "");
         });
       }
+
       const stopped = await launch(f.root, f.env, ["stop"]).done;
       expect({
         code: stopped.code,
@@ -481,6 +515,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       const next = launch(f.root, f.env, ["start"]);
       await waitUntil(async () => {
         const session = await f.store.read();
+
         return session?.status === "running";
       }, next.output);
       await launch(f.root, f.env, ["stop"]).done;
@@ -493,11 +528,13 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const f = await createFixture({
       hooks: { bootstrap: "sleep 1", shutdown: "node hook.cjs shutdown" },
     });
+
     const a = launch(f.root, f.env, ["start"]);
     const b = launch(f.root, f.env, ["start"]);
     await waitUntil(
       async () => {
         const session = await f.store.read();
+
         return session?.status === "running";
       },
       () => a.output() + b.output()
@@ -515,6 +552,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const s = await f.store.read();
+
       return s?.status === "starting" && !!s.process && f.proxy.calls.length > 0;
     }, owner.output);
     await launch(f.root, f.env, ["stop"]).done;
@@ -526,8 +564,10 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
 
   it("fails without a compatible proxy and rolls back infrastructure", async () => {
     const f = await createFixture();
+
     const result = await launch(f.root, { ...f.env, CADDY_ADMIN: "http://127.0.0.1:1" }, ["start"])
       .done;
+
     expect(result.code).toBe(1);
     expect(result.output).toContain("No supported local proxy");
     await expect(readFile(path.join(f.root, "hooks.jsonl"), "utf-8")).resolves.toContain(
@@ -540,9 +580,11 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     "never signals a live process whose PID belongs to a stale owner record",
     async () => {
       const f = await createFixture();
+
       const unrelated = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
         stdio: "ignore",
       });
+
       children.push(unrelated);
       assert.ok(unrelated.pid !== undefined && unrelated.pid !== 0);
       await f.store.write({
@@ -577,6 +619,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         ["DATABASE_URL", `postgresql://localhost:\${env('POSTGRES_PORT')}/app`],
       ]),
     });
+
     const [bin] = f.env.PATH.split(":");
     assert.ok(bin !== undefined && bin !== "");
     await writeFile(
@@ -608,14 +651,17 @@ process.stdout.write(JSON.stringify({
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const session = await f.store.read();
+
       return session?.status === "running";
     }, owner.output);
     const session = await f.store.read();
     assert.ok(session);
     expect(session.env.MAIL_PORT).toBe("48025");
     expect(session.env.DATABASE_URL).toBe("postgresql://localhost:45432/app");
+
     const result = await launch(f.root, f.env, ["exec", "node", "-p", "process.env.DATABASE_URL"])
       .done;
+
     expect(result.output.trim()).toBe(session.env.DATABASE_URL);
     await launch(f.root, f.env, ["stop"]).done;
     await owner.done;
@@ -628,6 +674,7 @@ process.stdout.write(JSON.stringify({
       const owner = launch(f.root, f.env, ["start"]);
       await waitUntil(async () => {
         const session = await f.store.read();
+
         return session?.status === "running";
       }, owner.output);
       const session = await f.store.read();
@@ -642,8 +689,10 @@ process.stdout.write(JSON.stringify({
         output: expectedOutput,
       });
       expect(info.output).toContain("running");
+
       const executed = await launch(f.root, f.env, ["exec", "node", "-p", "process.env.WEB_PORT"])
         .done;
+
       expect({
         code: executed.code,
         output: executed.output.trim(),
@@ -701,6 +750,7 @@ process.exitCode = existsSync("allow-shutdown") ? 0 : 1;
     const f = await createFixture({
       hooks: { shutdown: "node shutdown.cjs" },
     });
+
     await writeFile(
       path.join(f.root, "shutdown.cjs"),
       `
@@ -723,6 +773,7 @@ if (!existsSync("shutdown-pid")) {
     const owner = launch(f.root, f.env, ["start"]);
     await waitUntil(async () => {
       const session = await f.store.read();
+
       return session?.status === "running" && !!session.process;
     }, owner.output);
     owner.child.kill("SIGKILL");
@@ -730,11 +781,14 @@ if (!existsSync("shutdown-pid")) {
     const recovery = launch(f.root, f.env, ["stop"]);
     await waitUntil(async () => {
       const session = await f.store.read();
+
       if (session?.status !== "stopping" || !session.process) {
         return false;
       }
+
       try {
         await readFile(path.join(f.root, "shutdown-pid"));
+
         return true;
       } catch {
         return false;

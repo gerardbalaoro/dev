@@ -6,6 +6,7 @@ import { run } from "@/process/run";
 import type { Provider, PortlessState, RouteClaim } from "@/proxy/types";
 
 export type Runner = (args: string[]) => Promise<string>;
+
 interface PortlessOptions {
   applicationPorts?: number[];
   runner?: Runner;
@@ -43,22 +44,27 @@ export class Portless implements Provider {
     if (this.options.runner) {
       return await this.options.runner(args);
     }
+
     const timeout = AbortSignal.timeout(15_000);
+
     const result = await run(["portless", ...args], {
       cwd: this.cwd,
       env: this.env,
       shouldCapture: true,
       signal: this.options.signal ? AbortSignal.any([this.options.signal, timeout]) : timeout,
     });
+
     if (result.code) {
       throw new Error(`Portless ${args[0]} failed: ${result.stderr || result.stdout}`);
     }
+
     return result.stdout.trim();
   }
 
   async isAvailable(): Promise<boolean> {
     try {
       await this.run(["--version"]);
+
       return true;
     } catch {
       return false;
@@ -68,6 +74,7 @@ export class Portless implements Provider {
   async ensureReady(): Promise<void> {
     await this.run(["proxy", "start"]);
     const url = await this.getUrl("dev-provider-probe.localhost");
+
     if (
       this.options.applicationPorts?.includes(
         Number(url.port || (url.protocol === "https:" ? 443 : 80))
@@ -75,31 +82,38 @@ export class Portless implements Provider {
     ) {
       throw new Error("Portless listener conflicts with an application port");
     }
+
     const socket = connect({
       host: "127.0.0.1",
       port: Number(url.port || (url.protocol === "https:" ? 443 : 80)),
     });
+
     const timeout = AbortSignal.timeout(2000);
+
     try {
       await once(socket, "connect", { signal: timeout });
     } catch (error) {
       if (timeout.aborted) {
         throw new Error("Portless proxy is not listening", { cause: error });
       }
+
       throw error;
     } finally {
       socket.destroy();
     }
+
     this.origin = url;
   }
 
   private async getUrl(hostname: string): Promise<URL> {
     const url = new URL(await this.run(["get", Portless.getAlias(hostname), "--no-worktree"]));
+
     if (url.hostname !== hostname || !["http:", "https:"].includes(url.protocol)) {
       throw new Error(
         "Portless must serve the logical .localhost hostname (LAN/custom-only TLD mode is incompatible)"
       );
     }
+
     return url;
   }
 
@@ -107,12 +121,14 @@ export class Portless implements Provider {
     if (!hostname.endsWith(".localhost")) {
       throw new Error("Expected a .localhost hostname");
     }
+
     return hostname.slice(0, -".localhost".length);
   }
 
   async getEndpointUrl(hostname: string): Promise<string> {
     const url = this.origin ? new URL(this.origin) : await this.getUrl(hostname);
     url.hostname = hostname;
+
     return url.origin;
   }
 

@@ -8,12 +8,14 @@ import { restore } from "@/proxy/detect";
 describe("caddy", () => {
   it("rejects an existing proxy listener that conflicts with an application port", async () => {
     const fixture = await createCaddy();
+
     try {
       const provider = new Caddy({
         admin: fixture.admin,
         applicationPorts: [8080],
         env: { DEV_STATE_DIR: await createTempDir() },
       });
+
       await expect(provider.ensureReady()).rejects.toThrow("application port");
       expect(fixture.routes).toHaveLength(0);
     } finally {
@@ -23,11 +25,13 @@ describe("caddy", () => {
 
   it("mutates only owned routes, preserves other workspaces, and cleans by stable ID", async () => {
     const fixture = await createCaddy();
+
     try {
       const provider = new Caddy({
         admin: fixture.admin,
         env: { DEV_STATE_DIR: await createTempDir() },
       });
+
       await expect(provider.isAvailable()).resolves.toBeTruthy();
       await provider.ensureReady();
       await expect(provider.getEndpointUrl("api.project.localhost")).resolves.toBe(
@@ -95,11 +99,13 @@ describe("caddy", () => {
     const fixture = await createCaddy({
       dev: { ...server, read_timeout: 5_000_000_000, routes: [] },
     });
+
     try {
       const provider = new Caddy({
         admin: fixture.admin,
         env: { DEV_STATE_DIR: await createTempDir() },
       });
+
       await provider.ensureReady();
       await expect(provider.getEndpointUrl("api.project.localhost")).resolves.toBe(want);
     } finally {
@@ -128,11 +134,13 @@ describe("caddy", () => {
     null,
   ])("rejects an incompatible dev server before publishing: %j", async (server) => {
     const fixture = await createCaddy({ dev: server });
+
     try {
       const provider = new Caddy({
         admin: fixture.admin,
         env: { DEV_STATE_DIR: await createTempDir() },
       });
+
       await expect(provider.ensureReady()).rejects.toThrow(/Caddy/u);
       await expect(
         provider.publish({

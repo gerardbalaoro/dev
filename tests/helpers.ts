@@ -14,6 +14,7 @@ export type FixtureValue =
   | { [key: string]: FixtureValue | undefined };
 
 const temporary: string[] = [];
+
 afterEach(async () => {
   await Promise.all(
     temporary.splice(0).map(async (dir) => {
@@ -21,9 +22,11 @@ afterEach(async () => {
     })
   );
 });
+
 export async function createTempDir(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), "dev-test-"));
   temporary.push(directory);
+
   return directory;
 }
 
@@ -42,6 +45,7 @@ export async function createGitRepo(): Promise<string> {
     "-qm",
     "initial",
   ]);
+
   return root;
 }
 

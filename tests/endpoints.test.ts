@@ -10,11 +10,13 @@ describe("endpoints", () => {
     const context = new Resolver({}, await createTempDir(), {
       allocator: { allocate: async () => await Promise.resolve(43_001) },
     });
+
     const endpoints = await Endpoints.ports(
       { "my-api": "43002", web: { port: `\${port()}`, root: true } },
       "project-12345678",
       context
     );
+
     const resolved = await Endpoints.urls(endpoints, createProvider(), context);
     expect(resolved).toStrictEqual({
       "my-api": {

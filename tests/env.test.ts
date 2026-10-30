@@ -24,15 +24,18 @@ describe("environment expressions", () => {
 
   it("resolves once, in order, inheriting earlier values in commands", async () => {
     let calls = 0;
+
     const context = new Resolver({ BASE: "base" }, await createTempDir(), {
       allocator: {
         allocate: async () => {
           const port = 43_000 + calls;
           calls += 1;
+
           return await Promise.resolve(port);
         },
       },
     });
+
     await context.resolve(
       Object.fromEntries([
         ["PORT", `\${port()}`],
@@ -90,14 +93,17 @@ describe("environment expressions", () => {
 
   it("finishes each async interpolation before starting the next", async () => {
     let value = 0;
+
     const context = {
       advance: async () => {
         await Promise.resolve();
         value += 1;
+
         return value;
       },
       current: () => value,
     };
+
     await expect(interpolate(`\${advance()}-\${current()}-\${advance()}`, context)).resolves.toBe(
       "1-1-2"
     );
@@ -127,6 +133,7 @@ describe("environment expressions", () => {
         interpolate(input, {
           port: () => {
             calls += 1;
+
             return calls;
           },
         })

@@ -10,9 +10,11 @@ async function exec(command: string[], cwd = process.cwd()): Promise<number> {
   if (!command.length) {
     throw new Error("Usage: dev exec <command...>");
   }
+
   const { git } = await context(cwd);
   const env = { ...inherit(), ...(await Sessions.env(git)) };
   const signals = watch();
+
   try {
     // Preserve argument boundaries; users can explicitly invoke sh -c for shell syntax.
     const result = await run(command, {
@@ -21,6 +23,7 @@ async function exec(command: string[], cwd = process.cwd()): Promise<number> {
       shouldInherit: true,
       signal: signals.signal,
     });
+
     return result.code;
   } finally {
     signals.dispose();

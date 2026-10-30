@@ -26,11 +26,14 @@ describe("session execution", () => {
     const options = { cwd: workspace.root, env: inherit() };
     await writeFile(path.join(workspace.root, "run.cjs"), "setInterval(() => {}, 1000)");
     const application = await execution.start("node run.cjs", options, Silent);
+
     try {
       const before = await store.read();
+
       if (!before?.process) {
         throw new Error("Missing application process record");
       }
+
       await expect(
         execution.run(
           [process.execPath, "-e", 'require("node:fs").writeFileSync("unexpected", "spawned")'],
@@ -56,26 +59,32 @@ describe("session execution", () => {
     await writeFile(path.join(workspace.root, "run.cjs"), "setInterval(() => {}, 1000)");
     const write = store.write.bind(store);
     let spawned: Identity | undefined;
+
     const recording = vi.spyOn(store, "write").mockImplementation(async (state) => {
       if (state.process) {
         spawned = state.process;
         throw new Error("Ownership record failed");
       }
+
       await write(state);
     });
+
     try {
       await expect(
         execution.start("node run.cjs", { cwd: workspace.root, env: inherit() }, Silent)
       ).rejects.toThrow("Ownership record failed");
+
       if (!spawned) {
         throw new Error("Missing spawned process identity");
       }
+
       await expect(Identity.matches(spawned)).resolves.toBeFalsy();
       const state = await store.read();
       expect(state?.process).toBeUndefined();
     } finally {
       await execution.stop();
       recording.mockRestore();
+
       if (spawned) {
         await Identity.stop(spawned);
       }

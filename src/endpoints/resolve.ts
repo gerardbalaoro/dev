@@ -14,15 +14,18 @@ async function ports(
   await Array.fromAsync(Object.entries(config), async ([name, definition]) => {
     const expanded = ResolvedEndpointSchema.parse(definition);
     const port = Number(await context.resolveValue(expanded.port));
+
     if (!Number.isInteger(port) || port < 1 || port > 65_535) {
       throw new Error(`Invalid port for endpoint ${name}: ${port}`);
     }
+
     endpoints[name] = {
       hostname: hostname(name, workspace, expanded.root),
       port,
     };
     context.set(`${prefix(name)}_PORT`, String(port));
   });
+
   return endpoints;
 }
 
@@ -37,6 +40,7 @@ async function urls(
     endpoints[name] = { ...endpoint, url };
     context.set(`${prefix(name)}_URL`, url);
   });
+
   return endpoints;
 }
 

@@ -12,6 +12,7 @@ describe("ui", () => {
       "-e",
       "import { output } from './src/ui/command.ts'; const display = output('app', 8); display.write('application log\\npartial'); display.finish(0);",
     ]);
+
     expect(stdout).toContain("application log\npartial");
   });
 
@@ -20,6 +21,7 @@ describe("ui", () => {
     tail.write("partial");
     tail.write(" line\n");
     expect(tail.getLines(1)).toStrictEqual(["partial line"]);
+
     for (let i = 0; i < 1000; i += 1) {
       tail.write(`\u001B[31mline ${i}\u001B[0m\n`);
     }

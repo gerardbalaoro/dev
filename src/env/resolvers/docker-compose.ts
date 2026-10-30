@@ -22,6 +22,7 @@ export async function published(
   execute: Executor = run
 ): Promise<string> {
   const timeout = AbortSignal.timeout(15_000);
+
   const result = await execute(
     ["docker", "compose", "ps", "--format", "json", "--status", "running", service],
     {
@@ -30,6 +31,7 @@ export async function published(
       signal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
     }
   );
+
   if (result.code !== 0) {
     throw new Error(
       `Docker Compose port lookup failed for ${service}:${containerPort}: ${result.stderr.trim()}`
@@ -41,6 +43,7 @@ export async function published(
     .split("\n")
     .filter(Boolean)
     .flatMap((line) => ContainerSchema.parse(JSON.parse(line)).Publishers ?? []);
+
   const ports = new Set(
     publishers
       .filter(
@@ -51,10 +54,12 @@ export async function published(
       )
       .map((binding) => binding.PublishedPort)
   );
+
   if (ports.size !== 1) {
     throw new Error(
       `Expected one published TCP port for ${service}:${containerPort}, found ${ports.size}`
     );
   }
+
   return String([...ports][0]);
 }

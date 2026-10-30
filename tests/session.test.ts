@@ -19,19 +19,25 @@ describe("session", () => {
     const journal = await Journal.create(workspace, store);
     await journal.reserve({ web: "3000" }, "exit 4");
     const [claim] = await readdir(store.routesDirectory);
+
     if (claim === undefined || claim === "") {
       throw new Error("Missing route claim");
     }
+
     await writeFile(path.join(store.routesDirectory, claim), "invalid JSON");
+
     const failure = await journal.cleanup({
       ...UI,
       error() {},
       output: () => ({ finish() {}, write() {} }),
     });
+
     expect(failure).toBeInstanceOf(AggregateError);
+
     if (!(failure instanceof AggregateError)) {
-      throw new Error("Expected cleanup failures");
+      throw new TypeError("Expected cleanup failures");
     }
+
     expect(failure.errors).toStrictEqual([
       expect.any(SyntaxError),
       expect.objectContaining({ message: "Shutdown hook exited 4" }),
@@ -45,6 +51,7 @@ describe("session", () => {
     const workspace = await Workspaces.resolve("project", await createGitRepo());
     const store = new Store(workspace, await createTempDir());
     const owner = await Identity.get(process.pid);
+
     const session: Session = {
       endpoints: {},
       env: { SECRET: "value" },
@@ -58,6 +65,7 @@ describe("session", () => {
       version: 1,
       workspace: workspace.name,
     };
+
     await store.write(session);
     await expect(store.read()).resolves.toStrictEqual(session);
     const stats = await stat(store.file);
@@ -75,11 +83,13 @@ describe("session", () => {
     const a = new Store(await Workspaces.resolve("first", root), state);
     const b = new Store(await Workspaces.resolve("second", root), state);
     const release = await acquire(a);
+
     try {
       await expect(acquire(b)).rejects.toThrow("already running");
     } finally {
       await release();
     }
+
     const releaseSecond = await acquire(b);
     await releaseSecond();
   }, 10_000);

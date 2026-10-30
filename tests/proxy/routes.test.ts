@@ -12,22 +12,26 @@ describe("route claims", () => {
     const state = await createTempDir();
     const directory = path.join(state, "routes");
     const fixture = await createCaddy();
+
     const provider = new Caddy({
       admin: fixture.admin,
       env: { DEV_STATE_DIR: state },
     });
+
     const first = {
       hostname: "project.localhost",
       owner: "first",
       port: 43_101,
       root: "/first",
     };
+
     const second = {
       hostname: "project.localhost",
       owner: "second",
       port: 43_102,
       root: "/second",
     };
+
     try {
       await provider.ensureReady();
       await new Routes(directory).publish(first, provider);
@@ -57,29 +61,36 @@ describe("route claims", () => {
   it("allows only one concurrent claim and keeps its route after the loser's cleanup", async () => {
     const state = await createTempDir();
     const fixture = await createCaddy();
+
     const provider = new Caddy({
       admin: fixture.admin,
       env: { DEV_STATE_DIR: state },
     });
+
     const registry = new Routes(path.join(state, "routes"));
+
     const first = {
       hostname: "project.localhost",
       owner: "first",
       port: 43_101,
       root: "/first",
     };
+
     const second = {
       hostname: "project.localhost",
       owner: "second",
       port: 43_102,
       root: "/second",
     };
+
     try {
       await provider.ensureReady();
+
       const results = await Promise.allSettled([
         registry.publish(first, provider),
         registry.publish(second, provider),
       ]);
+
       expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
       expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
       const winner = results[0]?.status === "fulfilled" ? first : second;
