@@ -19,7 +19,7 @@ describe("session", () => {
     const journal = await Journal.create(workspace, store);
     await journal.reserve({ web: "3000" }, "exit 4");
     const [claim] = await readdir(store.routesDirectory);
-    if (!claim) {
+    if (claim === undefined || claim === "") {
       throw new Error("Missing route claim");
     }
     await writeFile(path.join(store.routesDirectory, claim), "invalid JSON");

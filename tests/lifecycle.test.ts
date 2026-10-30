@@ -10,6 +10,7 @@ import { writeConfig, createGitRepo, createTempDir } from "@tests/helpers";
 import { createCaddy } from "@tests/proxy/caddy-fixture";
 import { execa } from "execa";
 import { describe, afterEach, expect, it } from "vitest";
+import { z } from "zod";
 
 import type { Config } from "@/config/types";
 import { Identity } from "@/process/identity";
@@ -42,7 +43,11 @@ describe("lifecycle", () => {
         child.kill("SIGTERM");
       }
     }
-    await Promise.all(cleanups.splice(0).map((fn) => fn()));
+    await Promise.all(
+      cleanups.splice(0).map(async (fn) => {
+        await fn();
+      })
+    );
   });
   function launch(root: string, env: NodeJS.ProcessEnv, args: string[]) {
     const child = spawn(process.execPath, ["--import", tsx, cli, ...args], {
@@ -52,8 +57,6 @@ describe("lifecycle", () => {
     });
     children.push(child);
     let output = "";
-    assert.ok(child.stdout);
-    assert.ok(child.stderr);
     child.stdout.on("data", (chunk) => {
       output += chunk;
     });
@@ -143,9 +146,10 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const response2 = await fetch(`http://127.0.0.1:${session.env.WEB_PORT}`);
     await expect(response2.text()).resolves.toBe(session.env.MESSAGE);
     const duplicate = await launch(f.root, f.env, ["start"]).done;
+    const expectedOutput: unknown = expect.stringContaining("already running");
     expect(duplicate).toMatchObject({
       code: 1,
-      output: expect.stringContaining("already running"),
+      output: expectedOutput,
     });
     const info = await launch(f.root, f.env, ["status"]).done;
     expect(info.output).toContain("running");
@@ -168,7 +172,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         ]).done;
         expect({
           code: executed.code,
-          env: JSON.parse(executed.output),
+          env: z.json().parse(JSON.parse(executed.output)),
         }).toStrictEqual({
           code: 7,
           env: {
@@ -209,7 +213,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const hooks = contents
       .trim()
       .split("\n")
-      .map((line) => JSON.parse(line));
+      .map((line) => z.record(z.string(), z.string()).parse(JSON.parse(line)));
     expect(hooks).toStrictEqual([
       { compose: "project", stage: "bootstrap", workspace: "project" },
       {
@@ -266,9 +270,10 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       { ...fixture.env, CADDY_ADMIN: "http://127.0.0.1:1" },
       ["start"]
     ).done;
+    const expectedOutput: unknown = expect.stringContaining("worker-output");
     expect(result).toMatchObject({
       code: 0,
-      output: expect.stringContaining("worker-output"),
+      output: expectedOutput,
     });
     expect(fixture.proxy.calls).toHaveLength(0);
     await expect(fixture.store.read()).resolves.toBeUndefined();
@@ -298,13 +303,14 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     );
     const pending = await f.store.read();
     assert.ok(pending);
+    const expectedEndpoint: unknown = expect.any(Object);
     expect({
       endpoint: pending.endpoints.web,
       routes: f.proxy.routes.length,
       shutdown: pending.shutdown,
       status: pending.status,
     }).toStrictEqual({
-      endpoint: expect.any(Object),
+      endpoint: expectedEndpoint,
       routes: 1,
       shutdown: undefined,
       status: "stopping",
@@ -320,7 +326,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
     const hooks = contents
       .trim()
       .split("\n")
-      .map((line) => JSON.parse(line));
+      .map((line) => z.record(z.string(), z.string()).parse(JSON.parse(line)));
     expect(hooks.filter((hook) => hook.stage === "shutdown")).toHaveLength(1);
   });
 
@@ -462,7 +468,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         process.kill(leader, "SIGKILL");
         await waitUntil(async () => {
           const identity = await Identity.get(leader);
-          return !identity.startToken;
+          return !(identity.startToken ?? "");
         });
       }
       const stopped = await launch(f.root, f.env, ["stop"]).done;
@@ -538,7 +544,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
         stdio: "ignore",
       });
       children.push(unrelated);
-      assert.ok(unrelated.pid);
+      assert.ok(unrelated.pid !== undefined && unrelated.pid !== 0);
       await f.store.write({
         endpoints: {},
         env: {},
@@ -572,7 +578,7 @@ createServer((_request, response) => response.end(process.env.MESSAGE))
       ]),
     });
     const [bin] = f.env.PATH.split(":");
-    assert.ok(bin);
+    assert.ok(bin !== undefined && bin !== "");
     await writeFile(
       path.join(bin, "docker"),
       `#!/usr/bin/env node
@@ -630,9 +636,10 @@ process.stdout.write(JSON.stringify({
         ? rm(path.join(f.root, "package.json"))
         : writeConfig(f.root, { name: "changed", run: { invalid: true } }));
       const info = await launch(f.root, f.env, ["status"]).done;
+      const expectedOutput: unknown = expect.stringContaining("project");
       expect(info).toMatchObject({
         code: 0,
-        output: expect.stringContaining("project"),
+        output: expectedOutput,
       });
       expect(info.output).toContain("running");
       const executed = await launch(f.root, f.env, ["exec", "node", "-p", "process.env.WEB_PORT"])
@@ -673,9 +680,10 @@ process.exitCode = existsSync("allow-shutdown") ? 0 : 1;
       shutdown: pending.shutdown,
     }).toStrictEqual({ code: 1, pendingRoutes: [], shutdown });
     const next = await launch(f.root, f.env, ["start"]).done;
+    const expectedOutput: unknown = expect.stringContaining("Stale session cleanup failed");
     expect(next).toMatchObject({
       code: 1,
-      output: expect.stringContaining("Stale session cleanup failed"),
+      output: expectedOutput,
     });
     const session2 = await f.store.read();
     expect(session2?.id).toBe(pending.id);

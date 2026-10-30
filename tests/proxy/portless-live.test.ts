@@ -1,6 +1,6 @@
 import { once } from "node:events";
-import { createServer, get } from "node:http";
-import { promisify } from "node:util";
+import { createServer, get, IncomingMessage } from "node:http";
+import { text } from "node:stream/consumers";
 
 import { createTempDir } from "@tests/helpers";
 import getPort from "get-port";
@@ -12,7 +12,7 @@ import { run } from "@/process/run";
 import { Portless } from "@/proxy/portless";
 
 describe("portless-live", () => {
-  it.skipIf(!process.env.PORTLESS_TEST_BINARY)(
+  it.skipIf(!(process.env.PORTLESS_TEST_BINARY ?? ""))(
     "publishes and removes a real external Portless alias",
     async () => {
       const root = await createTempDir();
@@ -42,7 +42,9 @@ describe("portless-live", () => {
         }
         return result.stdout.trim();
       };
-      const upstream = createServer((_req, res) => res.end("portless-upstream"));
+      const upstream = createServer((_req, res) => {
+        res.end("portless-upstream");
+      });
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       const provider = new Portless(root, { runner });
@@ -64,14 +66,11 @@ describe("portless-live", () => {
             agent: false,
             headers: { Host: "api.project.localhost" },
           });
-          const [response] = await once(request, "response");
-          const chunks: Buffer[] = [];
-          for await (const chunk of response) {
-            chunks.push(chunk);
-          }
-          return response.statusCode === 200
-            ? Buffer.concat(chunks).toString()
-            : `HTTP ${response.statusCode}`;
+          const [response] = z
+            .tuple([z.instanceof(IncomingMessage)])
+            .parse(await once(request, "response"));
+          const body = await text(response);
+          return response.statusCode === 200 ? body : `HTTP ${response.statusCode}`;
         };
         // Portless debounces its shared route-file watcher.
         await expect.poll(fetchUpstream, { interval: 50, timeout: 2000 }).toBe("portless-upstream");
@@ -88,7 +87,7 @@ describe("portless-live", () => {
         });
       } finally {
         await runner(["proxy", "stop"]);
-        await promisify(upstream.close.bind(upstream))();
+        await upstream[Symbol.asyncDispose]();
       }
     },
     25_000

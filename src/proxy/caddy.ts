@@ -209,7 +209,7 @@ export class Caddy implements Provider {
   }
 
   async ensureReady(): Promise<void> {
-    if (this.options.applicationPorts?.includes(Number(new URL(this.admin).port || 80))) {
+    if (this.options.applicationPorts?.includes(Number(new URL(this.admin).port || 80)) === true) {
       throw new Error("Caddy admin listener conflicts with an application port");
     }
     const directory = path.join(Sessions.directory(this.env), "proxy", hash(this.admin));
@@ -246,14 +246,14 @@ export class Caddy implements Provider {
       throw new Error("Caddy dev listener must use a local TCP port");
     }
     const port = Number(match.groups?.port);
-    if (this.options.applicationPorts?.includes(port)) {
+    if (this.options.applicationPorts?.includes(port) === true) {
       throw new Error(`Caddy listener conflicts with application port ${port}`);
     }
     if (port < 1 || port > 65_535) {
       throw new Error("Invalid Caddy listener port");
     }
     const hasTls = (server.tls_connection_policies?.length ?? 0) > 0;
-    if (!hasTls && !server.automatic_https?.disable) {
+    if (!hasTls && server.automatic_https?.disable !== true) {
       throw new Error(
         "Caddy HTTP dev server must disable automatic_https, or configure TLS policies"
       );
@@ -263,13 +263,13 @@ export class Caddy implements Provider {
     this.origin = new URL(`${protocol}://localhost:${port}`).origin;
   }
 
-  getEndpointUrl(hostname: string): Promise<string> {
-    if (!this.origin) {
-      return Promise.reject(new Error("Caddy is not ready"));
+  async getEndpointUrl(hostname: string): Promise<string> {
+    if (this.origin === undefined || this.origin === "") {
+      return await Promise.reject(new Error("Caddy is not ready"));
     }
     const url = new URL(this.origin);
     url.hostname = hostname;
-    return Promise.resolve(url.origin);
+    return await Promise.resolve(url.origin);
   }
 
   private static getRouteId(claim: Pick<RouteClaim, "hostname" | "owner">): string {
@@ -277,7 +277,7 @@ export class Caddy implements Provider {
   }
 
   async publish(claim: RouteClaim): Promise<void> {
-    if (!this.server) {
+    if (this.server === undefined || this.server === "") {
       throw new Error("Caddy is not ready");
     }
     const { hostname, port } = claim;
@@ -294,7 +294,8 @@ export class Caddy implements Provider {
       terminal: true,
     };
     const existing = await this.request(`/id/${id}`, "GET", undefined, true);
-    if (existing) {
+    const hasRoute = Boolean(existing);
+    if (hasRoute) {
       await this.request(`/id/${id}`, "PATCH", route);
       return;
     }
@@ -310,7 +311,12 @@ export class Caddy implements Provider {
   }
 
   getState(): CaddyState {
-    if (!this.server || !this.origin) {
+    if (
+      this.server === undefined ||
+      this.server === "" ||
+      this.origin === undefined ||
+      this.origin === ""
+    ) {
       throw new Error("Caddy is not ready");
     }
     return {

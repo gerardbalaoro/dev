@@ -7,7 +7,7 @@ import { z } from "zod";
 import { alive } from "@/process/signals";
 
 export const IdentitySchema = z.object({
-  groupToken: z.string().uuid().optional(),
+  groupToken: z.uuid().optional(),
   pid: z.number().int().positive(),
   startToken: z.string().optional(),
 });
@@ -18,7 +18,7 @@ async function readLinuxProcess(pid: number) {
     const stat = await readFile(`/proc/${pid}/stat`, "utf-8");
     const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
     if (fields[0] === "Z" || fields[0] === "X") {
-      return;
+      return null;
     }
     return { group: Number(fields[2]), pid, started: fields[19] };
   } catch (error) {
@@ -27,7 +27,7 @@ async function readLinuxProcess(pid: number) {
       "code" in error &&
       (error.code === "ENOENT" || error.code === "ESRCH")
     ) {
-      return;
+      return null;
     }
     throw error;
   }
@@ -73,7 +73,7 @@ async function matches(identity: Identity): Promise<boolean> {
   if (!alive(identity.pid)) {
     return false;
   }
-  if (!identity.startToken) {
+  if (!(identity.startToken ?? "")) {
     throw new Error(
       `Cannot verify process identity for PID ${identity.pid}; refusing to signal a PID-only record`
     );
@@ -86,7 +86,9 @@ async function getGroupMembers(group: number): Promise<number[]> {
   if (process.platform === "linux") {
     const processes = await readdir("/proc");
     const entries = processes.filter((entry) => /^\d+$/u.test(entry));
-    const members = await Promise.all(entries.map((entry) => readLinuxProcess(Number(entry))));
+    const members = await Promise.all(
+      entries.map(async (entry) => await readLinuxProcess(Number(entry)))
+    );
     return members.flatMap((entry) => (entry?.group === group ? [entry.pid] : []));
   }
   const { stdout } = await execa("ps", ["-axo", "pid=,pgid=,stat="], {
@@ -97,7 +99,7 @@ async function getGroupMembers(group: number): Promise<number[]> {
     .split("\n")
     .flatMap((line) => {
       const [pid, pgid, state] = line.trim().split(/\s+/u);
-      return Number(pgid) === group && !state?.startsWith("Z") ? [Number(pid)] : [];
+      return Number(pgid) === group && state?.startsWith("Z") !== true ? [Number(pid)] : [];
     });
 }
 
@@ -119,21 +121,25 @@ async function hasGroupToken(pid: number, token: string): Promise<boolean> {
 
 async function stop(identity: Identity): Promise<void> {
   const current = await get(identity.pid);
-  if (current.startToken && identity.startToken && current.startToken !== identity.startToken) {
+  const hasCurrentToken = Boolean(current.startToken);
+  const hasRecordedToken = Boolean(identity.startToken);
+  const hasComparableTokens = hasCurrentToken && hasRecordedToken;
+  if (hasComparableTokens && current.startToken !== identity.startToken) {
     // The original group leader has been replaced; never signal the replacement.
     return;
   }
   if (process.platform === "win32") {
-    if (!current.startToken) {
+    if (!hasCurrentToken) {
       return;
     }
-    if (!identity.startToken) {
+    if (!hasRecordedToken) {
       throw new Error(`Cannot verify process identity for PID ${identity.pid}`);
     }
     const result = await execa("taskkill", ["/pid", String(identity.pid), "/T", "/F"], {
       reject: false,
     });
-    if (result.exitCode && (await matches(identity))) {
+    const hasFailed = Boolean(result.exitCode);
+    if (hasFailed && (await matches(identity))) {
       throw new Error(`Could not terminate process tree ${identity.pid}`);
     }
     return;
@@ -142,11 +148,12 @@ async function stop(identity: Identity): Promise<void> {
   if (!members.length) {
     return;
   }
-  if (!current.startToken || !identity.startToken) {
+  if (!hasComparableTokens) {
     const token = identity.groupToken;
-    const evidence = token
-      ? await Promise.all(members.map((pid) => hasGroupToken(pid, token)))
-      : [];
+    const evidence =
+      token !== undefined && token !== ""
+        ? await Promise.all(members.map(async (pid) => await hasGroupToken(pid, token)))
+        : [];
     if (!evidence.some(Boolean)) {
       throw new Error(
         `Cannot verify ownership of process group ${identity.pid}; retaining recovery state`

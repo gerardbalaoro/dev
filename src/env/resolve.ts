@@ -33,14 +33,16 @@ export class Resolver {
 
   private readonly allocator: Allocator;
   readonly env: Record<string, string>;
-  readonly resolved: Record<string, string> = Object.create(null);
+  readonly resolved: Record<string, string> = {};
   constructor(base: Record<string, string>, cwd: string, options: ResolverOptions = {}) {
     this.options = options;
 
     this.cwd = cwd;
 
     this.allocator = options.allocator ?? allocator();
-    this.env = Object.assign(Object.create(null), base);
+    this.env = { ...base };
+    Object.setPrototypeOf(this.env, null);
+    Object.setPrototypeOf(this.resolved, null);
   }
 
   set(name: string, value: string): void {
@@ -51,9 +53,9 @@ export class Resolver {
   async resolveValue(expression: string): Promise<string> {
     this.options.signal?.throwIfAborted();
     return await interpolate(expression, {
-      "docker.compose.port": (...args) => {
+      "docker.compose.port": async (...args) => {
         const [service, port] = ComposePortSchema.parse(args);
-        return published(
+        return await published(
           service,
           port,
           { cwd: this.cwd, env: this.env, signal: this.options.signal },
@@ -64,9 +66,9 @@ export class Resolver {
         const [name] = EnvSchema.parse(args);
         return read(name, this.env);
       },
-      exec: (...args) => {
+      exec: async (...args) => {
         const [script] = CommandSchema.parse(args);
-        return command(
+        return await command(
           script,
           { cwd: this.cwd, env: this.env, signal: this.options.signal },
           this.options.execute

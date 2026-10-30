@@ -14,13 +14,19 @@ export interface UI {
 }
 
 export const UI: UI = {
-  error: (message) => log.error(message),
-  info: (message) => log.info(message),
+  error: (message) => {
+    log.error(message);
+  },
+  info: (message) => {
+    log.info(message);
+  },
   output,
   showEndpoints: (endpoints) => {
     if (Object.keys(endpoints).length) {
       note(format(endpoints), "Local URLs");
     }
   },
-  start: (workspace) => intro(`dev · ${workspace}`),
+  start: (workspace) => {
+    intro(`dev · ${workspace}`);
+  },
 };

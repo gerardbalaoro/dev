@@ -13,7 +13,9 @@ export async function foreground(
   try {
     const result = await execute(command, {
       ...options,
-      onOutput: (chunk) => output.write(chunk),
+      onOutput: (chunk) => {
+        output.write(chunk);
+      },
     });
     output.finish(result.code);
     return result.code;

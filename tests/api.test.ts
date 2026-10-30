@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/promise-function-async -- The fixture returns an Execa subprocess so callers can kill it. */
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -80,7 +81,9 @@ await dev.run(async session => {
 });
 `);
       const result = await f.execute();
-      const output = JSON.parse(result.stdout);
+      const output = z
+        .object({ failure: z.string(), next: z.json() })
+        .parse(JSON.parse(result.stdout));
       expect(output.failure).toContain(error);
       expect(output.next).toStrictEqual({
         code: 0,
@@ -131,7 +134,7 @@ fs.writeFileSync("stopped", "after command");
 `
       );
       const result = await f.execute();
-      expect(JSON.parse(result.stdout).code).toBe(0);
+      expect(z.object({ code: z.number() }).parse(JSON.parse(result.stdout)).code).toBe(0);
       await expect(readFile(path.join(f.root, "stopped"), "utf-8")).resolves.toBe("after command");
     },
     25_000
@@ -169,8 +172,8 @@ setInterval(() => {}, 1000);
       const commands: Identity[] = [];
       let owner: Identity | undefined;
       let main: Identity | undefined;
-      const stop = () =>
-        execa(process.execPath, [...CliArgs, "stop"], {
+      const stop = async () =>
+        await execa(process.execPath, [...CliArgs, "stop"], {
           cwd: f.root,
           env: f.env,
           reject: false,
@@ -178,7 +181,7 @@ setInterval(() => {}, 1000);
         });
       try {
         await expect
-          .poll(() => readFile(path.join(f.root, "ready"), "utf-8"), {
+          .poll(async () => await readFile(path.join(f.root, "ready"), "utf-8"), {
             timeout: 10_000,
           })
           .toBe("");
@@ -192,7 +195,7 @@ setInterval(() => {}, 1000);
           ...(await Promise.all(
             ["first", "second"].map(async (name) => {
               const pid = Number(await readFile(path.join(f.root, `${name}.pid`), "utf-8"));
-              return Identity.get(pid);
+              return await Identity.get(pid);
             })
           ))
         );
@@ -202,7 +205,9 @@ setInterval(() => {}, 1000);
         }
         process.kill(owner.pid, "SIGKILL");
         const output = await execution;
-        const results = JSON.parse(output.stdout);
+        const results = z
+          .array(z.object({ message: z.string(), status: z.string() }))
+          .parse(JSON.parse(output.stdout));
         expect(results).toHaveLength(3);
         for (const result of results) {
           expect(result.status).toBe("rejected");
@@ -218,12 +223,16 @@ setInterval(() => {}, 1000);
           });
           const failed = await stop();
           const retained = await store.read();
-          const shutdown = await readFile(path.join(f.root, "stopped"), "utf-8").catch((error) => {
-            if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-              return;
+          const shutdown = await (async (): Promise<string | undefined> => {
+            try {
+              return await readFile(path.join(f.root, "stopped"), "utf-8");
+            } catch (error) {
+              if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+                return undefined;
+              }
+              throw error;
             }
-            throw error;
-          });
+          })();
           attempts.push({
             code: failed.exitCode,
             commands: retained?.commands,
@@ -258,7 +267,11 @@ setInterval(() => {}, 1000);
         if (owner && (await Identity.matches(owner))) {
           process.kill(owner.pid, "SIGKILL");
         }
-        await Promise.all(commands.map((command) => Identity.stop(command)));
+        await Promise.all(
+          commands.map(async (command) => {
+            await Identity.stop(command);
+          })
+        );
         if (main) {
           await Identity.stop(main);
         }
@@ -283,7 +296,13 @@ try {
       { env: { BASE: "inherited", KEEP: "old" } }
     );
     const output = await f.execute();
-    const result = JSON.parse(output.stdout);
+    const result = z
+      .object({
+        first: z.record(z.string(), z.string()),
+        second: z.string(),
+        workspace: z.string(),
+      })
+      .parse(JSON.parse(output.stdout));
     expect(result).toMatchObject({
       first: { base: "inherited", keep: "override" },
       workspace: "project",
@@ -390,11 +409,12 @@ catch (error) {
       { hooks: { shutdown: "exit 4" } }
     );
     const output = await f.execute();
-    const errors = JSON.parse(output.stdout);
+    const errors = z.array(z.unknown()).parse(JSON.parse(output.stdout));
     expect(errors[0]).toStrictEqual({ message: "callback failed" });
+    const expectedMessage: unknown = expect.stringContaining("Shutdown hook exited 4");
     expect(errors[1]).toMatchObject({
       errors: ["Shutdown hook exited 4"],
-      message: expect.stringContaining("Shutdown hook exited 4"),
+      message: expectedMessage,
     });
   }, 25_000);
 
@@ -413,9 +433,10 @@ catch (error) {
     );
     await f.execute();
     const retried = await f.execute();
+    const expectedMessage: unknown = expect.stringContaining("Stale session cleanup failed");
     expect(JSON.parse(retried.stdout)).toMatchObject({
       errors: ["Shutdown hook exited 4"],
-      message: expect.stringContaining("Stale session cleanup failed"),
+      message: expectedMessage,
     });
     const state = await new Store(await Workspaces.git(f.root), f.state).read();
     expect(state?.shutdown).toBe("exit 4");
@@ -477,7 +498,7 @@ process.exit(0);
 `);
     await f.execute();
     await expect
-      .poll(() => readFile(path.join(f.root, "stopped"), "utf-8"), {
+      .poll(async () => await readFile(path.join(f.root, "stopped"), "utf-8"), {
         timeout: 10_000,
       })
       .toBe("done\n");

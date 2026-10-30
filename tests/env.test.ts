@@ -26,10 +26,10 @@ describe("environment expressions", () => {
     let calls = 0;
     const context = new Resolver({ BASE: "base" }, await createTempDir(), {
       allocator: {
-        allocate: () => {
+        allocate: async () => {
           const port = 43_000 + calls;
           calls += 1;
-          return Promise.resolve(port);
+          return await Promise.resolve(port);
         },
       },
     });
@@ -81,9 +81,9 @@ describe("environment expressions", () => {
   it("awaits nested context functions and preserves their output literally", async () => {
     await expect(
       interpolate(`some-string-\${double(port())}-\${env('TOKEN')}`, {
-        double: (value) => Promise.resolve(z.number().parse(value) * 2),
+        double: async (value) => await Promise.resolve(z.number().parse(value) * 2),
         env: () => `x&y-\${port()}`,
-        port: () => Promise.resolve(21),
+        port: async () => await Promise.resolve(21),
       })
     ).resolves.toBe(`some-string-42-x&y-\${port()}`);
   });
@@ -114,7 +114,7 @@ describe("environment expressions", () => {
     const error = new Error("Port allocation failed");
     await expect(
       interpolate(`\${port()}`, {
-        port: () => Promise.reject(error),
+        port: async () => await Promise.reject(error),
       })
     ).rejects.toBe(error);
   });

@@ -6,6 +6,6 @@ export interface Allocator {
 
 export function allocator(): Allocator {
   return {
-    allocate: () => getPort({ host: "127.0.0.1", reserve: true }),
+    allocate: async () => await getPort({ host: "127.0.0.1", reserve: true }),
   };
 }

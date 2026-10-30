@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/prefer-promise-reject-errors -- Exercise providers that reject with non-Error values. */
 import { setImmediate } from "node:timers/promises";
 
 import { createProvider } from "@tests/proxy/helpers";
@@ -29,7 +30,9 @@ describe("proxy detection", () => {
     const provider = await detect(".", {
       providers: [
         createProvider("portless", {
-          ensureReady: () => Promise.reject(new Error("not ready")),
+          ensureReady: async () => {
+            await Promise.reject(new Error("not ready"));
+          },
         }),
         createProvider("caddy"),
       ],
@@ -40,7 +43,9 @@ describe("proxy detection", () => {
   it("fails with actionable diagnostics without a provider", async () => {
     await expect(
       detect(".", {
-        providers: [createProvider("test", { isAvailable: () => Promise.resolve(false) })],
+        providers: [
+          createProvider("test", { isAvailable: async () => await Promise.resolve(false) }),
+        ],
       })
     ).rejects.toThrow("Install Portless");
   });
@@ -53,7 +58,9 @@ describe("proxy detection", () => {
     "falls back after a provider rejects with a non-Error value: $error",
     async ({ error, want }) => {
       const failed = createProvider("portless", {
-        ensureReady: () => Promise.reject(error),
+        ensureReady: async () => {
+          await Promise.reject(error);
+        },
       });
       const provider = await detect(".", {
         providers: [failed, createProvider("caddy")],

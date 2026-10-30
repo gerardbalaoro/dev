@@ -5,7 +5,7 @@ import type { Store } from "@/session/store";
 
 export function running(workspace: string, pid?: number): Error {
   return new Error(
-    `Workspace "${workspace}" is already running or starting.${pid ? `\nPID: ${pid}` : ""}\nRun \`dev status\` for details.`
+    `Workspace "${workspace}" is already running or starting.${pid !== undefined && pid !== 0 ? `\nPID: ${pid}` : ""}\nRun \`dev status\` for details.`
   );
 }
 

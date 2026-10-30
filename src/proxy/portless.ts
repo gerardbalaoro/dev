@@ -41,7 +41,7 @@ export class Portless implements Provider {
 
   private async run(args: string[]): Promise<string> {
     if (this.options.runner) {
-      return this.options.runner(args);
+      return await this.options.runner(args);
     }
     const timeout = AbortSignal.timeout(15_000);
     const result = await run(["portless", ...args], {
@@ -71,7 +71,7 @@ export class Portless implements Provider {
     if (
       this.options.applicationPorts?.includes(
         Number(url.port || (url.protocol === "https:" ? 443 : 80))
-      )
+      ) === true
     ) {
       throw new Error("Portless listener conflicts with an application port");
     }

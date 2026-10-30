@@ -27,7 +27,7 @@ function compile(node: Expression, context: ExpressionContext): Evaluation {
   if (node.type === "Literal") {
     const value = ValueSchema.safeParse(node.value);
     if (value.success) {
-      return () => Promise.resolve(value.data);
+      return async () => await Promise.resolve(value.data);
     }
   }
   if (node.type === "TemplateLiteral") {
@@ -59,7 +59,7 @@ function compile(node: Expression, context: ExpressionContext): Evaluation {
       return compile(argument, context);
     });
     return async () => {
-      const values = await Array.fromAsync(arguments_, (evaluate) => evaluate());
+      const values = await Array.fromAsync(arguments_, async (evaluate) => await evaluate());
       const result = await resolver(...values);
       return ValueSchema.parse(result);
     };

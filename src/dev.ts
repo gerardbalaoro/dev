@@ -36,8 +36,8 @@ export class Dev {
     return this;
   }
 
-  start(command?: string): Promise<Running> {
-    return connect(this.cwd, structuredClone(merge(this.config, { run: command })));
+  async start(command?: string): Promise<Running> {
+    return await connect(this.cwd, structuredClone(merge(this.config, { run: command })));
   }
 
   run(command?: string): Promise<Result>;
@@ -47,7 +47,7 @@ export class Dev {
     const workflow = typeof command === "function" ? command : action;
     const session = await this.start(typeof command === "string" ? command : undefined);
     if (!workflow) {
-      return session.exited;
+      return await session.exited;
     }
     let result: T;
     try {

@@ -2,7 +2,6 @@ import { once } from "node:events";
 import { readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { createTempDir } from "@tests/helpers";
 import { describe, expect, it, vi } from "vitest";
@@ -69,12 +68,15 @@ if (name === "--remove") {
   );
 
   it("uses provider URLs without worktree rewriting and only owns static aliases", async () => {
-    const server = createServer((socket) => socket.end());
+    const server = createServer((socket) => {
+      socket.end();
+    });
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const { port } = z.object({ port: z.number().int().positive() }).parse(server.address());
-    const runner = vi.fn<(args: string[]) => Promise<string>>((args) =>
-      Promise.resolve(args[0] === "get" ? `http://${args[1]}.localhost:${port}` : "")
+    const runner = vi.fn<(args: string[]) => Promise<string>>(
+      async (args) =>
+        await Promise.resolve(args[0] === "get" ? `http://${args[1]}.localhost:${port}` : "")
     );
     try {
       const provider = new Portless(".", { runner });
@@ -97,13 +99,13 @@ if (name === "--remove") {
       expect(runner).toHaveBeenCalledWith(["alias", "--remove", "api.project"]);
       expect(runner.mock.calls.some(([args]) => args.includes("run"))).toBeFalsy();
     } finally {
-      await promisify(server.close.bind(server))();
+      await server[Symbol.asyncDispose]();
     }
   });
 
   it("rejects URL hostname rewriting", async () => {
     const provider = new Portless(".", {
-      runner: () => Promise.resolve("https://rewritten.test"),
+      runner: async () => await Promise.resolve("https://rewritten.test"),
     });
     await expect(provider.getEndpointUrl("api.project.localhost")).rejects.toThrow(
       "logical .localhost"

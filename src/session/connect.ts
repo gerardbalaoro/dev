@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/promise-function-async -- Stop returns the stable completion promise without wrapping it. */
 import { fork } from "node:child_process";
 
 import type { Extension } from "@/config/types";
@@ -6,7 +7,7 @@ import type { Result, Running } from "@/session/launch";
 import { restore } from "@/session/protocol";
 import type { Request, Response } from "@/session/protocol";
 
-export function connect(cwd: string, config: Extension): Promise<Running> {
+export async function connect(cwd: string, config: Extension): Promise<Running> {
   const isSource = import.meta.url.endsWith(".ts");
   const worker = new URL(isSource ? "../worker.ts" : "./worker.js", import.meta.url);
   const child = fork(worker, [], {
@@ -55,16 +56,16 @@ export function connect(cwd: string, config: Extension): Promise<Running> {
       case "ready": {
         ready.resolve({
           ...message.session,
-          exec(command) {
+          async exec(command) {
             if (isFinished || isStopping) {
-              return Promise.reject(new Error("The session has stopped"));
+              return await Promise.reject(new Error("The session has stopped"));
             }
             const request = Promise.withResolvers<ProcessResult>();
             const id = sequence;
             sequence += 1;
             pending.set(id, request);
             send({ command, id, type: "exec" });
-            return request.promise;
+            return await request.promise;
           },
           exited: completion.promise,
           stop() {
@@ -114,5 +115,5 @@ export function connect(cwd: string, config: Extension): Promise<Running> {
     pending.clear();
   });
   send({ config, cwd, type: "start" });
-  return ready.promise;
+  return await ready.promise;
 }

@@ -12,11 +12,16 @@ import { hash } from "@/utils/hash";
 import type { Workspace } from "@/workspace/resolve";
 
 function directory(environment: NodeJS.ProcessEnv = process.env): string {
-  if (environment.DEV_STATE_DIR) {
+  if (environment.DEV_STATE_DIR !== undefined && environment.DEV_STATE_DIR !== "") {
     return environment.DEV_STATE_DIR;
   }
   if (process.platform === "linux") {
-    return path.join(environment.XDG_STATE_HOME || path.join(homedir(), ".local", "state"), "dev");
+    return path.join(
+      environment.XDG_STATE_HOME !== undefined && environment.XDG_STATE_HOME !== ""
+        ? environment.XDG_STATE_HOME
+        : path.join(homedir(), ".local", "state"),
+      "dev"
+    );
   }
   return envPaths("dev", { suffix: "" }).data;
 }
@@ -82,8 +87,8 @@ export class Store {
   }
 }
 
-function alive(session: Session): Promise<boolean> {
-  return Identity.matches({
+async function alive(session: Session): Promise<boolean> {
+  return await Identity.matches({
     pid: session.pid,
     startToken: session.ownerStartToken,
   });

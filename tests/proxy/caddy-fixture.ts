@@ -1,6 +1,8 @@
+/* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks, anti-slop/no-unknown-parameters -- The HTTP callback cannot await; handle request failures at its boundary. */
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { promisify } from "node:util";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { text } from "node:stream/consumers";
 
 import type { FixtureValue } from "@tests/helpers";
 import { z } from "zod";
@@ -12,15 +14,11 @@ export async function createCaddy(servers?: FixtureValue) {
   const calls: string[] = [];
   let shouldFailPublish = false;
   let shouldFailDelete = false;
-  const server = createServer(async (req, res) => {
+  async function handle(req: IncomingMessage, res: ServerResponse) {
     const path = req.url ?? "/";
     calls.push(`${req.method} ${path}`);
     res.setHeader("Content-Type", "application/json");
-    const chunks: Buffer[] = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const body = Buffer.concat(chunks).toString();
+    const body = await text(req);
     if (req.method === "GET" && path.startsWith("/config/")) {
       let value: FixtureValue = {
         apps: {
@@ -78,6 +76,11 @@ export async function createCaddy(servers?: FixtureValue) {
       return;
     }
     res.writeHead(404).end("{}");
+  }
+  const server = createServer((req, res) => {
+    void handle(req, res).catch((error: unknown) => {
+      res.destroy(error instanceof Error ? error : new Error(String(error)));
+    });
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -85,9 +88,9 @@ export async function createCaddy(servers?: FixtureValue) {
   return {
     admin: `http://127.0.0.1:${address.port}`,
     calls,
-    close: () => {
+    close: async () => {
       server.closeAllConnections();
-      return promisify(server.close.bind(server))();
+      await server[Symbol.asyncDispose]();
     },
     failDelete: (shouldFail = true) => {
       shouldFailDelete = shouldFail;

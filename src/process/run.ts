@@ -31,7 +31,7 @@ export type Executor = (
 const MaxCapture = 1024 * 1024;
 
 const getSignalExitCode = (signal?: string): number => {
-  if (!signal) {
+  if (signal === undefined || signal === "") {
     return 1;
   }
   const entry = Object.entries(constants.signals).find(([name]) => name === signal);
@@ -41,7 +41,7 @@ const getSignalExitCode = (signal?: string): number => {
 function parseCommand(command: string | string[]) {
   const shouldUseShell = !Array.isArray(command);
   const [file, ...args] = Array.isArray(command) ? command : [command];
-  if (!file) {
+  if (file === undefined || file === "") {
     throw new Error("A command is required");
   }
   return { args, file, shouldUseShell };
@@ -50,7 +50,7 @@ function parseCommand(command: string | string[]) {
 export async function run(command: string | string[], options: RunOptions): Promise<ProcessResult> {
   options.signal?.throwIfAborted();
   const invocation = parseCommand(command);
-  const output = options.shouldInherit ? "inherit" : "pipe";
+  const output = options.shouldInherit === true ? "inherit" : "pipe";
   const groupToken = randomUUID();
   const child = execa(invocation.file, invocation.args, {
     buffer: false,
@@ -75,7 +75,9 @@ export async function run(command: string | string[], options: RunOptions): Prom
   let killTimer: NodeJS.Timeout | undefined;
   const abort = () => {
     stop();
-    killTimer ??= setTimeout(() => stop("SIGKILL"), 2000);
+    killTimer ??= setTimeout(() => {
+      stop("SIGKILL");
+    }, 2000);
     killTimer.unref();
   };
   const createSink = (channel: "stdout" | "stderr") => {
@@ -83,7 +85,7 @@ export async function run(command: string | string[], options: RunOptions): Prom
     return (chunk: Buffer) => {
       const text = decoder.write(chunk);
       options.onOutput?.(text);
-      if (options.shouldCapture && !hasOverflow) {
+      if (options.shouldCapture === true && !hasOverflow) {
         capturedBytes += chunk.length;
         if (capturedBytes > MaxCapture) {
           hasOverflow = true;
@@ -101,7 +103,7 @@ export async function run(command: string | string[], options: RunOptions): Prom
   const reap = async () => {
     // The shell may exit before its descendants. Always reap the process group.
     stop();
-    if (process.platform !== "win32" && child.pid) {
+    if (process.platform !== "win32" && child.pid !== undefined) {
       for await (const deadline of interval(25, Date.now() + 2000)) {
         if (Date.now() >= deadline) {
           break;
@@ -119,11 +121,11 @@ export async function run(command: string | string[], options: RunOptions): Prom
   child.nodeChildProcess.stderr?.on("data", createSink("stderr"));
   child.nodeChildProcess.once("exit", abort);
   options.signal?.addEventListener("abort", abort, { once: true });
-  if (options.signal?.aborted) {
+  if (options.signal?.aborted === true) {
     abort();
   }
   try {
-    if (child.pid && options.onSpawn) {
+    if (child.pid !== undefined && options.onSpawn) {
       try {
         await options.onSpawn(child.pid, groupToken);
       } catch (error) {

@@ -56,10 +56,13 @@ describe("process", () => {
         env: { ...process.env, DEV_PROCESS_TOKEN: groupToken },
         stdio: "ignore",
       });
-      assert.ok(leader.pid);
+      assert.notEqual(leader.pid, 0);
+      assert.ok(leader.pid !== undefined);
       const { pid } = leader;
       try {
-        await expect.poll(() => readFile(path.join(root, "child.pid"), "utf-8")).toMatch(/^\d+/u);
+        await expect
+          .poll(async () => await readFile(path.join(root, "child.pid"), "utf-8"))
+          .toMatch(/^\d+/u);
         const descendant = Number(await readFile(path.join(root, "child.pid"), "utf-8"));
         const identity = { ...(await Identity.get(pid)), groupToken };
         const exited = once(leader, "exit");
@@ -113,7 +116,9 @@ describe("process", () => {
     const result = await run("sleep 60 & printf done; exit 4", {
       cwd: await createTempDir(),
       env: inherit(),
-      onOutput: (chunk) => output.push(chunk),
+      onOutput: (chunk) => {
+        output.push(chunk);
+      },
     });
     expect(result.code).toBe(4);
     expect(output.join("")).toBe("done");

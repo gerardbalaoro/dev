@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdir, symlink, writeFile } from "node:fs/promises";
-import { createServer, get } from "node:http";
+import { createServer, get, IncomingMessage } from "node:http";
 import path from "node:path";
-import { promisify } from "node:util";
+import { text } from "node:stream/consumers";
 
 import { createTempDir } from "@tests/helpers";
 import getPort from "get-port";
@@ -20,20 +20,23 @@ async function readRoute(port: string, hostname: string, pathname: string): Prom
     agent: false,
     headers: { Host: hostname },
   });
-  const [response] = await once(request, "response");
-  const chunks: Buffer[] = [];
-  for await (const chunk of response) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString();
+  const [response] = z
+    .tuple([z.instanceof(IncomingMessage)])
+    .parse(await once(request, "response"));
+  const body = await text(response);
+  return body;
 }
 
 describe("caddy-live", () => {
-  it.skipIf(!process.env.CADDY_TEST_BINARY).each(["configured", "empty", "no-apps", "unrelated"])(
+  it
+    .skipIf(!(process.env.CADDY_TEST_BINARY ?? ""))
+    .each(["configured", "empty", "no-apps", "unrelated"])(
     "sets up and proxies traffic through a %s Caddy instance",
     async (configuration) => {
       const root = await createTempDir();
-      const upstream = createServer((req, res) => res.end(`upstream:${req.url}`));
+      const upstream = createServer((req, res) => {
+        res.end(`upstream:${req.url}`);
+      });
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       const adminPort = await getPort();
@@ -79,11 +82,11 @@ describe("caddy-live", () => {
         });
         await expect
           .poll(
-            () => {
+            async () => {
               if (child.exitCode !== null) {
                 throw new Error(output);
               }
-              return provider.isAvailable();
+              return await provider.isAvailable();
             },
             { interval: 50, timeout: 2500 }
           )
@@ -132,13 +135,13 @@ describe("caddy-live", () => {
       } finally {
         child.kill("SIGTERM");
         await exited;
-        await promisify(upstream.close.bind(upstream))();
+        await upstream[Symbol.asyncDispose]();
       }
     },
     15_000
   );
 
-  it.skipIf(!process.env.CADDY_TEST_BINARY)(
+  it.skipIf(!(process.env.CADDY_TEST_BINARY ?? ""))(
     "detects an installed binary, starts it once for concurrent workspaces, and keeps other routes live",
     async () => {
       const root = await createTempDir();
@@ -156,7 +159,9 @@ describe("caddy-live", () => {
         DEV_STATE_DIR: root,
         PATH: `${bin}:${process.env.PATH}`,
       };
-      const upstream = createServer((req, res) => res.end(`managed:${req.url}`));
+      const upstream = createServer((req, res) => {
+        res.end(`managed:${req.url}`);
+      });
       upstream.listen(0, "127.0.0.1");
       await once(upstream, "listening");
       try {
@@ -200,7 +205,7 @@ describe("caddy-live", () => {
           method: "POST",
         }).catch(() => {});
         upstream.closeAllConnections();
-        await promisify(upstream.close.bind(upstream))();
+        await upstream[Symbol.asyncDispose]();
       }
     },
     20_000

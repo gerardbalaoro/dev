@@ -15,7 +15,11 @@ export type FixtureValue =
 
 const temporary: string[] = [];
 afterEach(async () => {
-  await Promise.all(temporary.splice(0).map((dir) => rm(dir, { force: true, recursive: true })));
+  await Promise.all(
+    temporary.splice(0).map(async (dir) => {
+      await rm(dir, { force: true, recursive: true });
+    })
+  );
 });
 export async function createTempDir(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), "dev-test-"));

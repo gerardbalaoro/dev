@@ -33,7 +33,7 @@ export class Routes {
           return HostnameClaimSchema.parse(JSON.parse(await readFile(file, "utf-8")));
         } catch (error) {
           if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-            return;
+            return undefined;
           }
           throw error;
         }
@@ -69,7 +69,9 @@ export class Routes {
   }
 
   async reserve(claim: HostnameClaim): Promise<void> {
-    await this.withClaim(claim, (file, current) => Routes.claim(file, current, claim));
+    await this.withClaim(claim, async (file, current) => {
+      await Routes.claim(file, current, claim);
+    });
   }
 
   async publish(claim: RouteClaim, provider: Provider): Promise<void> {

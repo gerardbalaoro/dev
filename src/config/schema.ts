@@ -33,7 +33,8 @@ export const ConfigSchema = z
   .strict()
   .superRefine((config, ctx) => {
     if (
-      Object.values(config.endpoints).filter((e) => ResolvedEndpointSchema.parse(e).root).length > 1
+      Object.values(config.endpoints).filter((e) => ResolvedEndpointSchema.parse(e).root === true)
+        .length > 1
     ) {
       ctx.addIssue({
         code: "custom",

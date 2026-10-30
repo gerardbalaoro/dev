@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/promise-function-async -- Stop returns the stable completion promise without wrapping it. */
 import { load } from "@/config/load";
 import type { Extension } from "@/config/types";
 import { context } from "@/context";
@@ -94,7 +95,7 @@ export async function launch(
     const cancellation = processes.signal;
     await journal.reserve(config.endpoints, config.hooks.shutdown);
     ui.start(workspace.name);
-    if (config.hooks.bootstrap) {
+    if (config.hooks.bootstrap !== undefined && config.hooks.bootstrap !== "") {
       const code = await foreground(
         config.hooks.bootstrap,
         { cwd: workspace.root, env: base },
@@ -159,6 +160,6 @@ export async function launch(
     if (closing) {
       throw error;
     }
-    return rollback(error instanceof Error ? error : new Error(String(error)));
+    return await rollback(error instanceof Error ? error : new Error(String(error)));
   }
 }

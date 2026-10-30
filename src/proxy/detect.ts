@@ -37,7 +37,7 @@ export async function detect(
     } catch (error) {
       failures.push(`${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
-    return select(index + 1);
+    return await select(index + 1);
   };
   return await select(0);
 }

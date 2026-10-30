@@ -17,10 +17,8 @@ describe("workspace", () => {
     const worktree = path.join(await createTempDir(), "feature");
     await execa("git", ["-C", root, "worktree", "add", "-qb", "feature", worktree]);
     const linked = await Workspaces.resolve("project", worktree);
-    expect(linked).toMatchObject({
-      isLinked: true,
-      name: expect.stringMatching(/^project-[a-f0-9]{8}$/u),
-    });
+    const name: unknown = expect.stringMatching(/^project-[a-f0-9]{8}$/u);
+    expect(linked).toMatchObject({ isLinked: true, name });
     const workspace = await Workspaces.resolve("project", worktree);
     expect(linked.name).toBe(workspace.name);
     const other = path.join(await createTempDir(), "other");

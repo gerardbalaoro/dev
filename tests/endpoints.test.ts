@@ -8,7 +8,7 @@ import { Resolver } from "@/env/resolve";
 describe("endpoints", () => {
   it("generates root and named endpoint URLs before user environment resolution", async () => {
     const context = new Resolver({}, await createTempDir(), {
-      allocator: { allocate: () => Promise.resolve(43_001) },
+      allocator: { allocate: async () => await Promise.resolve(43_001) },
     });
     const endpoints = await Endpoints.ports(
       { "my-api": "43002", web: { port: `\${port()}`, root: true } },

@@ -34,7 +34,7 @@ export class Journal {
 
   static async create(workspace: Workspace, store: Store): Promise<Journal> {
     const owner = await Identity.get(process.pid);
-    if (!owner.startToken) {
+    if (!(owner.startToken ?? "")) {
       throw new Error("Cannot establish the session owner's process identity");
     }
     const session: Session = {
@@ -78,14 +78,18 @@ export class Journal {
       root: this.state.root,
     }));
     await this.commit((state) => ({ ...state, pendingRoutes }));
-    await Array.fromAsync(pendingRoutes, (claim) => this.routes.reserve(claim));
+    await Array.fromAsync(pendingRoutes, async (claim) => {
+      await this.routes.reserve(claim);
+    });
     // Arm rollback only after claims succeed, before any bootstrap side effects.
     await this.commit((state) => ({ ...state, shutdown }));
   }
 
   observe(): Pick<RunOptions, "onSpawn" | "onSettled"> {
     return {
-      onSettled: () => this.commit((state) => ({ ...state, process: undefined })),
+      onSettled: async () => {
+        await this.commit((state) => ({ ...state, process: undefined }));
+      },
       onSpawn: async (pid, groupToken) => {
         if (this.state.process) {
           throw new Error("A managed process is already active in this session");
@@ -103,7 +107,7 @@ export class Journal {
     let token: string | undefined;
     return {
       onSettled: async () => {
-        if (token) {
+        if (token !== undefined && token !== "") {
           await this.commit((state) => ({
             ...state,
             commands: state.commands?.filter((command) => command.groupToken !== token),
@@ -183,7 +187,7 @@ export class Journal {
     if (
       !(await attempt(async () => {
         const owner = await Identity.get(process.pid);
-        if (!owner.startToken) {
+        if (!(owner.startToken ?? "")) {
           throw new Error("Cannot establish the cleanup owner's process identity");
         }
         await this.commit((state) => ({
@@ -213,7 +217,7 @@ export class Journal {
         }));
       });
     });
-    if (this.state.commands?.length) {
+    if ((this.state.commands?.length ?? 0) > 0) {
       return failure();
     }
     {
@@ -236,7 +240,7 @@ export class Journal {
       });
     }
     const { shutdown } = this.state;
-    if (shutdown && !this.state.process) {
+    if (shutdown !== undefined && shutdown !== "" && !this.state.process) {
       await attempt(async () => {
         // Shutdown must still run after live session execution has stopped.
         const execution = new Execution(this, AbortSignal.timeout(30_000));
@@ -259,10 +263,12 @@ export class Journal {
     if (
       errors.length === 0 &&
       !this.state.process &&
-      !this.state.shutdown &&
+      !(this.state.shutdown ?? "") &&
       !this.state.pendingRoutes.length
     ) {
-      await attempt(() => this.store.remove(this.state.id));
+      await attempt(async () => {
+        await this.store.remove(this.state.id);
+      });
     }
     return errors.length ? failure() : undefined;
   }
